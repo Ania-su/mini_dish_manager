@@ -14,8 +14,10 @@ import java.util.List;
 
 public class Dish {
 
-    enum DishTypeEnum {
-
+    public enum DishTypeEnum {
+        START,
+        MAIN,
+        DESSERT
     }
 
     private int id;
@@ -23,8 +25,10 @@ public class Dish {
     private DishTypeEnum dishType;
     private List<Ingredient> ingredients;
 
-//    public double getDishPrice() {
-//
-//    }
+    public double getDishPrice() {
+        return ingredients.stream()
+                .mapToDouble(Ingredient::getPrice)
+                .sum();
+    }
 
 }

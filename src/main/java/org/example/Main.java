@@ -1,17 +1,36 @@
 package org.example;
 
+import org.example.entity.Dish;
+import org.example.entity.Ingredient;
+
+import javax.xml.crypto.Data;
+
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 public class Main {
     public static void main(String[] args) {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        System.out.printf("Hello and welcome!");
+        DataRetriever dataRetriever = new DataRetriever(new DBConnection());
 
-        for (int i = 1; i <= 5; i++) {
-            //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-            System.out.println("i = " + i);
+        try {
+            Dish dish = dataRetriever.findDishById(1);
+
+            System.out.println("Nom du plat : " + dish.getName());
+            System.out.println("Type : " + dish.getDishType());
+            System.out.println("Nombre d'ingrédients : " + dish.getIngredients().size());
+
+            for (Ingredient i : dish.getIngredients()) {
+                System.out.println("- " + i.getName() + " (" + i.getCategory() + ")");
+            }
+
+        } catch (RuntimeException e) {
+            System.out.println("Erreur : " + e.getMessage());
+        }
+
+        try {
+            dataRetriever.findDishById(999);
+            System.out.println("ERREUR");
+        } catch (RuntimeException e) {
+            System.out.println("Exception attendue : " + e.getMessage());
         }
     }
 }

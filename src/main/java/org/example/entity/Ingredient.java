@@ -13,7 +13,11 @@ import lombok.Setter;
 public class Ingredient {
 
     enum CategoryEnum {
-
+        VEGETABLE,
+        ANIMAL,
+        MARINE,
+        DIARY,
+        OTHER
     }
 
     private int id;
@@ -23,7 +27,7 @@ public class Ingredient {
     private Dish dish;
 
     public String getDishName() {
-        return dish.getName();
+        return dish != null ? dish.getName() : null;
     }
 
 }
