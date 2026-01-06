@@ -3,12 +3,11 @@ package org.example;
 import org.example.entity.Dish;
 import org.example.entity.Ingredient;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class DataRetriever {
     private final DBConnection dbconnection;
@@ -113,5 +112,64 @@ public class DataRetriever {
 
         return ingredients;
     }
+
+    public List<Ingredient> createIngredients(List<Ingredient> newIngredients) throws SQLException {
+
+        Set<String> names = new HashSet<>();
+        for (Ingredient ingredient : newIngredients) {
+            if (!names.add(ingredient.getName())) {
+                throw new RuntimeException(
+                        "Duplicate ingredient in provided list: " + ingredient.getName()
+                );
+            }
+        }
+
+        String sql = """
+            INSERT INTO ingredient (name, price, category, id_dish)
+            VALUES (?, ?, ?::category, ?)
+        """;
+
+        DBConnection dbconnection = new DBConnection();
+        Connection connection = dbconnection.getConnection();
+
+        connection.setAutoCommit(false);
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            for (Ingredient ingredient : newIngredients) {
+                statement.setString(1, ingredient.getName());
+                statement.setDouble(2, ingredient.getPrice());
+                statement.setObject(3, ingredient.getCategory(), Types.OTHER);
+
+                if (ingredient.getDish() != null) {
+                    statement.setInt(4, ingredient.getDish().getId());
+                } else {
+                    statement.setObject(4, null);
+                }
+
+                statement.addBatch();
+            }
+
+            statement.executeBatch();
+            connection.commit();
+            return newIngredients;
+
+        } catch (SQLException e) {
+            connection.rollback();
+            throw new RuntimeException(e);
+
+        } finally {
+            try {
+                connection.close();
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+
+            }
+
+        }
+
+    }
+
 
 }

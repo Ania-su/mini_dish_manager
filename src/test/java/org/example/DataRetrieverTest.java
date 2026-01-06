@@ -1,10 +1,12 @@
 package org.example;
 
+import jdk.jfr.Category;
 import org.example.entity.Dish;
 import org.example.entity.Ingredient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.sql.SQLException;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -54,10 +56,74 @@ public class DataRetrieverTest {
     }
 
     @Test
-    void shouldReturnEmptyList_whenPageIsOutOfRange() {
+    void shouldReturnEmptyListFindIngredientsTest() {
         List<Ingredient> ingredients = dataRetriever.findIngredients(3, 5);
 
         assertNotNull(ingredients);
         assertTrue(ingredients.isEmpty());
+    }
+
+    @Test
+    void createIngredientsFirstTest() throws SQLException {
+        Ingredient fromage = new Ingredient(
+                12,
+                "Fromage",
+                1200.0,
+                Ingredient.CategoryEnum.DIARY,
+                null
+        );
+
+        Ingredient oignon = new Ingredient(
+                13,
+                "Oignon",
+                500.0,
+                Ingredient.CategoryEnum.VEGETABLE,
+                null
+        );
+
+        List<Ingredient> ingredients = List.of(fromage, oignon);
+
+        List<Ingredient> result =
+                dataRetriever.createIngredients(ingredients);
+
+        assertEquals(2, result.size());
+        assertTrue(
+                result.stream().anyMatch(i -> i.getName().equals("Fromage"))
+        );
+        assertTrue(
+                result.stream().anyMatch(i -> i.getName().equals("Oignon"))
+        );
+    }
+
+    @Test
+    void createIngredientsSecondTest() throws SQLException {
+        Ingredient carotte = new Ingredient(
+                18,
+                "Carotte",
+                2000.0,
+                Ingredient.CategoryEnum.VEGETABLE,
+                null
+        );
+
+        Ingredient laitue = new Ingredient(
+                15,
+                "Laitue",
+                2000.0,
+                Ingredient.CategoryEnum.VEGETABLE,
+                null
+        );
+
+        List<Ingredient> ingredients = List.of(carotte, laitue);
+
+        assertThrows(
+                RuntimeException.class,
+                () -> dataRetriever.createIngredients(ingredients)
+        );
+
+        List<Ingredient> allIngredients = dataRetriever.findIngredients(1, 100);
+        assertFalse(
+                allIngredients.stream().anyMatch(i -> i.getName().equals("Carotte")),
+                "Not allowed"
+        );
     }
 }
