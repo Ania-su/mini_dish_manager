@@ -172,6 +172,7 @@ public class DataRetriever {
     }
 
     public Dish saveDish(Dish dishToSave) throws SQLException {
+
         DBConnection dbconnection = new DBConnection();
         Connection connection = dbconnection.getConnection();
 
@@ -223,6 +224,40 @@ public class DataRetriever {
         } finally {
             connection.close();
         }
+    }
+
+
+    public List<Dish> findDishByIngredientName(String ingredientName) throws SQLException {
+
+        DBConnection dbconnection = new DBConnection();
+        Connection connection = dbconnection.getConnection();
+
+        String sql = """
+              SELECT DISTINCT d.id AS dish_id, d.name AS dish_name, d.dish_type AS dish_type 
+              FROM dish d 
+              JOIN ingredient i ON d.id = i.id_dish 
+              WHERE i.name ILIKE ?
+        """;
+
+        List<Dish> dishes = new ArrayList<>();
+
+        PreparedStatement statement = connection.prepareStatement(sql);
+        statement.setString(1, "%" + ingredientName + "%");
+
+        ResultSet resultSet = statement.executeQuery();
+
+        while (resultSet.next()) {
+            Dish dish = new Dish(
+                    resultSet.getInt("dish_id"),
+                    resultSet.getString("dish_name"),
+                    Dish.DishTypeEnum.valueOf(resultSet.getString("dish_type")),
+                    new ArrayList<>()
+            );
+
+            dishes.add(dish);
+        }
+
+        return dishes;
     }
 
 }
