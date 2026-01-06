@@ -4,6 +4,7 @@ import org.example.entity.Dish;
 import org.example.entity.Ingredient;
 
 import javax.xml.crypto.Data;
+import java.sql.SQLException;
 import java.util.List;
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
@@ -28,11 +29,10 @@ public class Main {
         }
 
         try {
-            System.out.println("\nTest 1 : page = 2, size = 2");
             List<Ingredient> result1 = dataRetriever.findIngredients(2, 2);
 
             if (result1.isEmpty()) {
-                System.out.println("Résultat : liste vide");
+                System.out.println("Empty list");
             } else {
                 result1.forEach(i ->
                         System.out.println("- " + i.getName() + " (" + i.getCategory() + ")")

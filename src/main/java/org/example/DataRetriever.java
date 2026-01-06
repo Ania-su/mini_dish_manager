@@ -171,5 +171,58 @@ public class DataRetriever {
 
     }
 
+    public Dish saveDish(Dish dishToSave) throws SQLException {
+        DBConnection dbconnection = new DBConnection();
+        Connection connection = dbconnection.getConnection();
+
+        String insertSql = "INSERT INTO Dish (id, name, dish_type) VALUES (?, ?, ?);";
+        String updateSql = "UPDATE Dish SET name = ?, dish_type = ? WHERE id = ?;";
+        String deleteAssocSql = "DELETE FROM ingredient WHERE id_dish = ?;";
+        String insertAssocSql = "INSERT INTO ingredient (id_dish, id) VALUES (?, ?);";
+
+        try {
+            connection.setAutoCommit(false);
+
+            try (PreparedStatement insertStmt = connection.prepareStatement(insertSql)) {
+                insertStmt.setInt(1, dishToSave.getId());
+                insertStmt.setString(2, dishToSave.getName());
+                insertStmt.setObject(3, dishToSave.getDishType().name(), Types.OTHER);
+                insertStmt.executeUpdate();
+            } catch (SQLException e) {
+                try (PreparedStatement updateStmt = connection.prepareStatement(updateSql)) {
+                    updateStmt.setString(1, dishToSave.getName());
+                    updateStmt.setObject(2, dishToSave.getDishType().name(), Types.OTHER);
+                    updateStmt.setInt(3, dishToSave.getId());
+                    updateStmt.executeUpdate();
+                }
+            }
+
+            try (PreparedStatement deleteStmt = connection.prepareStatement(deleteAssocSql)) {
+                deleteStmt.setInt(1, dishToSave.getId());
+                deleteStmt.executeUpdate();
+            }
+
+            if (dishToSave.getIngredients() != null) {
+                try (PreparedStatement insertAssocStmt = connection.prepareStatement(insertAssocSql)) {
+                    for (Ingredient ing : dishToSave.getIngredients()) {
+                        insertAssocStmt.setInt(1, dishToSave.getId());
+                        insertAssocStmt.setInt(2, ing.getId());
+                        insertAssocStmt.addBatch();
+                    }
+                    insertAssocStmt.executeBatch();
+                }
+            }
+
+            connection.commit();
+            return dishToSave;
+
+        } catch (SQLException ex) {
+            connection.rollback();
+            throw new RuntimeException(ex);
+
+        } finally {
+            connection.close();
+        }
+    }
 
 }
