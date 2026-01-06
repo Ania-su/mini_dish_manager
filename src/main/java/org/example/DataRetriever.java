@@ -18,9 +18,18 @@ public class DataRetriever {
     }
 
     public Dish findDishById(int id) {
-        Dish dish = new Dish();
-
-        String sql = "SELECT d.id, d.name, i.id, i.name FROM Dish i LEFT JOIN Ingredient on d.id = i.id_dish WHERE id = ?";
+        String sql = """
+            SELECT d.id AS dish_id,
+                   d.name AS dish_name,
+                   d.dish_type AS dish_type,
+                   i.id AS ingredient_id,
+                   i.name AS ingredient_name,
+                   i.price AS ingredient_price,
+                   i.category AS ingredient_category
+            FROM dish d
+            LEFT JOIN ingredient i ON d.id = i.id_dish
+            WHERE d.id = ?
+            """;
 
         try (Connection connection = dbconnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -28,17 +37,43 @@ public class DataRetriever {
             statement.setInt(1, id);
             ResultSet rs = statement.executeQuery();
 
+            Dish dish = null;
+            List<Ingredient> ingredients = new ArrayList<>();
+
             while (rs.next()) {
-                dish.setId(rs.getInt("id"));
-                dish.setName(rs.getString("name"));
-                dish.setDishType(Dish.DishTypeEnum.valueOf(rs.getString("dish_type")));
+                if (dish == null) {
+                    dish = new Dish();
+                    dish.setId(rs.getInt("dish_id"));
+                    dish.setName(rs.getString("dish_name"));
+                    dish.setDishType(
+                            Dish.DishTypeEnum.valueOf(rs.getString("dish_type"))
+                    );
+                }
+
+                if (rs.getObject("ingredient_id") != null) {
+                    Ingredient ingredient = new Ingredient();
+                    ingredient.setId(rs.getInt("ingredient_id"));
+                    ingredient.setName(rs.getString("ingredient_name"));
+                    ingredient.setPrice(rs.getDouble("ingredient_price"));
+                    ingredient.setCategory(
+                            Ingredient.CategoryEnum.valueOf(rs.getString("ingredient_category"))
+                    );
+                    ingredient.setDish(dish);
+                    ingredients.add(ingredient);
+                }
             }
+
+            if (dish == null) {
+                throw new RuntimeException("Dish not found with id " + id);
+            }
+
+            dish.setIngredients(ingredients);
+            return dish;
+
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-
-        return dish;
     }
 
     public List<Ingredient> findIngredients(int page, int size) {
@@ -46,24 +81,33 @@ public class DataRetriever {
 
         int offset = (page - 1) * size;
 
-        String sql = "SELECT d.id, d.name, i.id, i.name FROM Ingredient i limit ? offset ?";
+        String sql = """
+            SELECT id, name, price, category
+            FROM ingredient
+            ORDER BY id
+            LIMIT ? OFFSET ?
+        """;
 
-        try (Connection connection = dbconnection.getConnection()) {
-            PreparedStatement statement = connection.prepareStatement(sql);
-            statement.setInt(1, offset);
-            statement.setInt(2, size);
+        try (Connection connection = dbconnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, size);
+            statement.setInt(2, offset);
 
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
                     Ingredient ingredient = new Ingredient();
                     ingredient.setId(rs.getInt("id"));
                     ingredient.setName(rs.getString("name"));
+                    ingredient.setPrice(rs.getDouble("price"));
+                    ingredient.setCategory(
+                            Ingredient.CategoryEnum.valueOf(rs.getString("category"))
+                    );
                     ingredients.add(ingredient);
                 }
-
             }
-        }
-        catch (SQLException e) {
+
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
 

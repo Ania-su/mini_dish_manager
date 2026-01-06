@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @AllArgsConstructor
@@ -23,7 +24,7 @@ public class Dish {
     private int id;
     private String name;
     private DishTypeEnum dishType;
-    private List<Ingredient> ingredients;
+    private List<Ingredient> ingredients = new ArrayList<>();
 
     public double getDishPrice() {
         return ingredients.stream()

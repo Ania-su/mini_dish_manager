@@ -4,6 +4,7 @@ import org.example.entity.Dish;
 import org.example.entity.Ingredient;
 
 import javax.xml.crypto.Data;
+import java.util.List;
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
@@ -12,25 +13,34 @@ public class Main {
         DataRetriever dataRetriever = new DataRetriever(new DBConnection());
 
         try {
-            Dish dish = dataRetriever.findDishById(1);
+            Dish dish = dataRetriever.findDishById(4);
 
-            System.out.println("Nom du plat : " + dish.getName());
+            System.out.println("Dish name : " + dish.getName());
             System.out.println("Type : " + dish.getDishType());
-            System.out.println("Nombre d'ingrédients : " + dish.getIngredients().size());
+            System.out.println("Ingredients : " + dish.getIngredients().size());
 
             for (Ingredient i : dish.getIngredients()) {
                 System.out.println("- " + i.getName() + " (" + i.getCategory() + ")");
             }
 
         } catch (RuntimeException e) {
-            System.out.println("Erreur : " + e.getMessage());
+            System.out.println("Error : " + e.getMessage());
         }
 
         try {
-            dataRetriever.findDishById(999);
-            System.out.println("ERREUR");
+            System.out.println("\nTest 1 : page = 2, size = 2");
+            List<Ingredient> result1 = dataRetriever.findIngredients(2, 2);
+
+            if (result1.isEmpty()) {
+                System.out.println("Résultat : liste vide");
+            } else {
+                result1.forEach(i ->
+                        System.out.println("- " + i.getName() + " (" + i.getCategory() + ")")
+                );
+            }
+
         } catch (RuntimeException e) {
-            System.out.println("Exception attendue : " + e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 }

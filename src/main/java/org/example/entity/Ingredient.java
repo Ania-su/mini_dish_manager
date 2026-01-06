@@ -12,7 +12,7 @@ import lombok.Setter;
 
 public class Ingredient {
 
-    enum CategoryEnum {
+    public enum CategoryEnum {
         VEGETABLE,
         ANIMAL,
         MARINE,
