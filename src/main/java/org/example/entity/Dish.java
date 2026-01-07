@@ -26,10 +26,18 @@ public class Dish {
     private DishTypeEnum dishType;
     private List<Ingredient> ingredients = new ArrayList<>();
 
-    public double getDishPrice() {
-        return ingredients.stream()
-                .mapToDouble(Ingredient::getPrice)
-                .sum();
+    public double getDishCost() {
+        double cost = 0;
+        for (Ingredient ingredient : ingredients) {
+            Object quantity = ingredient.getRequiredQuantity();
+            if (quantity == null) {
+                throw new IllegalArgumentException("Required quantity is null");
+            }
+            else {
+                cost += quantity * ingredient.getPrice();
+            }
+        }
+        return cost;
     }
 
 }

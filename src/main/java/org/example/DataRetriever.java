@@ -24,7 +24,8 @@ public class DataRetriever {
                    i.id AS ingredient_id,
                    i.name AS ingredient_name,
                    i.price AS ingredient_price,
-                   i.category AS ingredient_category
+                   i.category AS ingredient_category,
+                   i.required_quantity
             FROM dish d
             LEFT JOIN ingredient i ON d.id = i.id_dish
             WHERE d.id = ?
@@ -57,6 +58,7 @@ public class DataRetriever {
                     ingredient.setCategory(
                             Ingredient.CategoryEnum.valueOf(rs.getString("ingredient_category"))
                     );
+                    ingredient.setRequiredQuantity(rs.getDouble("required_quantity"));
                     ingredient.setDish(dish);
                     ingredients.add(ingredient);
                 }
@@ -81,8 +83,8 @@ public class DataRetriever {
         int offset = (page - 1) * size;
 
         String sql = """
-            SELECT id, name, price, category
-            FROM ingredient
+            SELECT id, name, price, category, required_quantity
+            FROM Ingredient
             ORDER BY id
             LIMIT ? OFFSET ?
         """;
@@ -102,6 +104,7 @@ public class DataRetriever {
                     ingredient.setCategory(
                             Ingredient.CategoryEnum.valueOf(rs.getString("category"))
                     );
+                    ingredient.setRequiredQuantity(rs.getObject("required_quantity"));
                     ingredients.add(ingredient);
                 }
             }
@@ -125,8 +128,8 @@ public class DataRetriever {
         }
 
         String sql = """
-            INSERT INTO ingredient (name, price, category, id_dish)
-            VALUES (?, ?, ?::category, ?)
+            INSERT INTO ingredient (name, price, category, id_dish, required_quantity)
+            VALUES (?, ?, ?::category, ?, ?)
         """;
 
         DBConnection dbconnection = new DBConnection();
@@ -140,7 +143,7 @@ public class DataRetriever {
                 statement.setString(1, ingredient.getName());
                 statement.setDouble(2, ingredient.getPrice());
                 statement.setObject(3, ingredient.getCategory(), Types.OTHER);
-
+                statement.setDouble(4, ingredient.getRequiredQuantity());
                 if (ingredient.getDish() != null) {
                     statement.setInt(4, ingredient.getDish().getId());
                 } else {
@@ -176,7 +179,7 @@ public class DataRetriever {
         DBConnection dbconnection = new DBConnection();
         Connection connection = dbconnection.getConnection();
 
-        String insertSql = "INSERT INTO Dish (id, name, dish_type) VALUES (?, ?, ?);";
+        String insertSql = "INSERT INTO Dish (id, name, dish_type) VALUES (?, ?, ?) ON CONFLICT id DO NOTHING;";
         String updateSql = "UPDATE Dish SET name = ?, dish_type = ? WHERE id = ?;";
         String deleteAssocSql = "DELETE FROM ingredient WHERE id_dish = ?;";
         String insertAssocSql = "INSERT INTO ingredient (id_dish, id) VALUES (?, ?);";
@@ -258,6 +261,88 @@ public class DataRetriever {
         }
 
         return dishes;
+    }
+
+    public List<Ingredient> findIngredientsByCriteria(String ingredientName, Ingredient.CategoryEnum category, String dishName, int page, int size) throws SQLException {
+
+        StringBuilder sql = new StringBuilder("SELECT i.id AS ingredient_id, i.name AS ingredient_name, i.price, i.category, d.id AS dish_id, d.name AS dish_name, d.dish_type FROM Ingredient i LEFT JOIN Dish d ON i.id_dish = d.id");
+
+        List<Object> params = new ArrayList<>();
+        List<Ingredient> ingredients = new ArrayList<>();
+        List<String> conditions = new ArrayList<>();
+
+        if (ingredientName != null && !ingredientName.isEmpty()) {
+            conditions.add("i.name LIKE ?");
+            params.add("%" + ingredientName + "%");
+        }
+        if (category != null) {
+            conditions.add("i.category = ?::Category");
+            params.add(category.toString());
+        }
+        if (dishName != null && !dishName.isEmpty()) {
+            conditions.add("d.name LIKE ?");
+            params.add("%" + dishName + "%");
+        }
+
+        if (!conditions.isEmpty()) {
+            sql.append(" WHERE ").append(String.join(" AND ", conditions));
+        }
+
+        sql.append(" LIMIT ? OFFSET ?");
+        int offset = (page - 1) * size;
+
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet rs = null;
+
+        try {
+            connection = dbconnection.getConnection();
+            statement = connection.prepareStatement(sql.toString());
+
+            int paramIndex = 1;
+            for (Object param : params) {
+                statement.setObject(paramIndex++, param);
+            }
+            statement.setInt(paramIndex++, size);
+            statement.setInt(paramIndex, offset);
+
+            rs = statement.executeQuery();
+
+            while (rs.next()) {
+                Dish dish = null;
+                int dishId = rs.getInt("dish_id");
+                if (!rs.wasNull()) {
+                    dish = new Dish(
+                            dishId,
+                            rs.getString("dish_name"),
+                            Dish.DishTypeEnum.valueOf(rs.getString("dish_type")),
+                            new ArrayList<>()
+                    );
+                }
+
+                Ingredient ingredient = new Ingredient(
+                                        rs.getInt("ingredient_id"),
+                                        rs.getString("ingredient_name"),
+                                        rs.getDouble("price"),
+                                        Ingredient.CategoryEnum.valueOf(rs.getString("category")),
+                                        dish,
+                                        rs.getDouble("required_quantity")
+                                );
+
+                if(dish != null) {
+                    dish.getIngredients().add(ingredient);
+                }
+
+                ingredients.add(ingredient);
+            }
+
+        } finally {
+            if (rs != null) rs.close();
+            if (statement != null) statement.close();
+            if (connection != null) connection.close();
+        }
+
+        return ingredients;
     }
 
 }
