@@ -29,9 +29,9 @@ public class Dish {
     public double getDishCost() {
         double cost = 0;
         for (Ingredient ingredient : ingredients) {
-            Object quantity = ingredient.getRequiredQuantity();
+            Double quantity = ingredient.getRequiredQuantity();
             if (quantity == null) {
-                throw new IllegalArgumentException("Required quantity is null");
+                throw new IllegalArgumentException("Exeption : unknown value for required quantity");
             }
             else {
                 cost += quantity * ingredient.getPrice();

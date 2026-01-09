@@ -14,7 +14,7 @@ public class Main {
         DataRetriever dataRetriever = new DataRetriever(new DBConnection());
 
         try {
-            Dish dish = dataRetriever.findDishById(4);
+            Dish dish = dataRetriever.findDishById(5);
 
             System.out.println("Dish name : " + dish.getName());
             System.out.println("Type : " + dish.getDishType());
@@ -48,15 +48,15 @@ public class Main {
 //        }
 
 
-        Dish burger = new Dish(100, "Humberger", Dish.DishTypeEnum.START, List.of(
-                new Ingredient(7, "steak", 4000.0, Ingredient.CategoryEnum.ANIMAL, 2.0)
-        ));
-
-        Dish saved = dataRetriever.saveDish(burger);
-        System.out.println("Saved : " + saved.getName());
-
-        double cost = saved.getDishCost();
-        System.out.println("Total cost : " + cost);
+//        Dish burger = new Dish(100, "Humberger", Dish.DishTypeEnum.START, List.of(
+//                new Ingredient(7, "steak", 4000.0, Ingredient.CategoryEnum.ANIMAL, 2.0)
+//        ));
+//
+//        Dish saved = dataRetriever.saveDish(burger);
+//        System.out.println("Saved : " + saved.getName());
+//
+//        double cost = saved.getDishCost();
+//        System.out.println("Total cost : " + cost);
 
 
     }

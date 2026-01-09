@@ -5,6 +5,8 @@ create table Ingredient ( id serial primary key unique not null,
                           category category not null, id_dish INT,
                           FOREIGN KEY (id_dish) REFERENCES Dish(id));
 
+ALTER TABLE Ingredient ADD COLUMN IF NOT EXISTS required_quantity numeric;
+
 create type dishes as enum ('START','MAIN','DESSERT');
 create table Dish ( id serial primary key unique not null,
                     name varchar (255) not null,

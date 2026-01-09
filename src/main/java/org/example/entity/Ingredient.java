@@ -20,7 +20,7 @@ public class Ingredient {
 
     private int id;
     private String name;
-    private double price;
+    private Double price;
     private CategoryEnum category;
     private Dish dish;
     private Double requiredQuantity;
@@ -29,7 +29,7 @@ public class Ingredient {
         return dish != null ? dish.getName() : null;
     }
 
-    public Ingredient(int id, String name, double price, CategoryEnum category, Double requiredQuantity) {
+    public Ingredient(int id, String name, Double price, CategoryEnum category, Double requiredQuantity) {
         this.id = id;
         this.name = name;
         this.price = price;

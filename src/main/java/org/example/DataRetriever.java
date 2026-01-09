@@ -2,6 +2,7 @@ package org.example;
 
 import org.example.entity.Dish;
 import org.example.entity.Ingredient;
+import org.example.entity.IngredientRowMapper;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -11,6 +12,7 @@ import java.util.Set;
 
 public class DataRetriever {
     private final DBConnection dbconnection;
+    private IngredientRowMapper ingredientRowMapper = new IngredientRowMapper();
 
     public DataRetriever(DBConnection dbconnection) {
         this.dbconnection = dbconnection;
@@ -51,16 +53,7 @@ public class DataRetriever {
                 }
 
                 if (rs.getObject("ingredient_id") != null) {
-                    Ingredient ingredient = new Ingredient();
-                    ingredient.setId(rs.getInt("ingredient_id"));
-                    ingredient.setName(rs.getString("ingredient_name"));
-                    ingredient.setPrice(rs.getDouble("ingredient_price"));
-                    ingredient.setCategory(
-                            Ingredient.CategoryEnum.valueOf(rs.getString("ingredient_category"))
-                    );
-                    ingredient.setRequiredQuantity(rs.getDouble("required_quantity"));
-                    ingredient.setDish(dish);
-                    ingredients.add(ingredient);
+                    ingredients.add(ingredientRowMapper.map(rs));
                 }
             }
 
@@ -97,15 +90,7 @@ public class DataRetriever {
 
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
-                    Ingredient ingredient = new Ingredient();
-                    ingredient.setId(rs.getInt("id"));
-                    ingredient.setName(rs.getString("name"));
-                    ingredient.setPrice(rs.getDouble("price"));
-                    ingredient.setCategory(
-                            Ingredient.CategoryEnum.valueOf(rs.getString("category"))
-                    );
-                    ingredient.setRequiredQuantity(rs.getObject("required_quantity"));
-                    ingredients.add(ingredient);
+                    ingredients.add(ingredientRowMapper.map(rs));
                 }
             }
 
