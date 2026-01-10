@@ -291,26 +291,33 @@ public class DataRetriever {
               WHERE i.name ILIKE ?
         """;
 
-        Connection connection = dbconnection.getConnection();
         List<Dish> dishes = new ArrayList<>();
 
-        PreparedStatement statement = connection.prepareStatement(sql);
-        statement.setString(1, "%" + ingredientName + "%");
+        try (Connection connection = dbconnection.getConnection()) {
 
-        ResultSet resultSet = statement.executeQuery();
+            PreparedStatement statement = connection.prepareStatement(sql);
+            statement.setString(1, "%" + ingredientName + "%");
 
-        while (resultSet.next()) {
-            Dish dish = new Dish(
-                    resultSet.getInt("dish_id"),
-                    resultSet.getString("dish_name"),
-                    Dish.DishTypeEnum.valueOf(resultSet.getString("dish_type")),
-                    new ArrayList<>()
-            );
 
-            dishes.add(dish);
+            ResultSet resultSet = statement.executeQuery();
+
+            while (resultSet.next()) {
+                Dish dish = new Dish(
+                        resultSet.getInt("dish_id"),
+                        resultSet.getString("dish_name"),
+                        Dish.DishTypeEnum.valueOf(resultSet.getString("dish_type")),
+                        new ArrayList<>()
+                );
+
+                dishes.add(dish);
+            }
+
+            return dishes;
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
 
-        return dishes;
     }
 
     public List<Ingredient> findIngredientsByCriteria(String ingredientName, Ingredient.CategoryEnum category, String dishName, int page, int size) throws SQLException {

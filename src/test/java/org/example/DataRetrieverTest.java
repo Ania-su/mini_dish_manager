@@ -127,4 +127,12 @@ public class DataRetrieverTest {
 
         assertEquals(beforeCount, afterCount, "Transaction should be rolled back");
     }
+
+    @Test
+    void findDishsByIngredientName() throws SQLException {
+        assertEquals(
+                "Poulet grillé",
+                dataRetriever.findDishByIngredientName("pou").getFirst().getName()
+        );
+    }
 }
