@@ -97,6 +97,9 @@ public class DataRetrieverTest {
 
     @Test
     void createIngredientsSecondTest() throws SQLException {
+
+        int beforeCount = dataRetriever.findIngredients(1, 100).size();
+
         Ingredient carotte = new Ingredient(
                 18,
                 "Carotte",
@@ -106,7 +109,7 @@ public class DataRetrieverTest {
         );
 
         Ingredient laitue = new Ingredient(
-                15,
+                8,
                 "Laitue",
                 2000.0,
                 Ingredient.CategoryEnum.VEGETABLE,
@@ -120,10 +123,8 @@ public class DataRetrieverTest {
                 () -> dataRetriever.createIngredients(ingredients)
         );
 
-        List<Ingredient> allIngredients = dataRetriever.findIngredients(1, 100);
-        assertFalse(
-                allIngredients.stream().anyMatch(i -> i.getName().equals("Carotte")),
-                "Not allowed"
-        );
+        int afterCount = dataRetriever.findIngredients(1, 100).size();
+
+        assertEquals(beforeCount, afterCount, "Transaction should be rolled back");
     }
 }

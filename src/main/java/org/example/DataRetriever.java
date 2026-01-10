@@ -76,7 +76,12 @@ public class DataRetriever {
         int offset = (page - 1) * size;
 
         String sql = """
-            SELECT id, name, price, category, required_quantity
+            SELECT 
+                id AS ingredient_id, 
+                name AS ingredient_name, 
+                price AS ingredient_price, 
+                category AS ingredient_category, 
+                required_quantity
             FROM Ingredient
             ORDER BY id
             LIMIT ? OFFSET ?
@@ -112,49 +117,59 @@ public class DataRetriever {
             }
         }
 
+        String checkSql = "SELECT 1 FROM Ingredient WHERE name = ?";
         String sql = """
-            INSERT INTO ingredient (name, price, category, id_dish, required_quantity)
-            VALUES (?, ?, ?::category, ?, ?)
+            INSERT INTO Ingredient (id ,name, price, category, id_dish, required_quantity)
+            VALUES (?, ?, ?, ?::category, ?, ?)
         """;
 
-        DBConnection dbconnection = new DBConnection();
-        Connection connection = dbconnection.getConnection();
+        try (Connection connection = dbconnection.getConnection();){
+            connection.setAutoCommit(false);
 
-        connection.setAutoCommit(false);
+            try (PreparedStatement checkStatement = connection.prepareStatement(checkSql)) {
+                for (Ingredient ingredient : newIngredients) {
+                    checkStatement.setString(1, ingredient.getName());
+                    try (ResultSet rs = checkStatement.executeQuery()) {
+                        if (rs.next()) {
+                            connection.rollback();
+                            throw new RuntimeException(
+                                    "Ingredient already exists in database: " + ingredient.getName()
+                            );
+                        }
+                    }
+                }
+            }
 
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
 
-            for (Ingredient ingredient : newIngredients) {
-                statement.setString(1, ingredient.getName());
-                statement.setDouble(2, ingredient.getPrice());
-                statement.setObject(3, ingredient.getCategory(), Types.OTHER);
-                statement.setDouble(4, ingredient.getRequiredQuantity());
-                if (ingredient.getDish() != null) {
-                    statement.setInt(4, ingredient.getDish().getId());
-                } else {
-                    statement.setObject(4, null);
+                for (Ingredient ingredient : newIngredients) {
+                    statement.setInt(1, ingredient.getId());
+                    statement.setString(2, ingredient.getName());
+                    statement.setDouble(3, ingredient.getPrice());
+                    statement.setObject(4, ingredient.getCategory(), Types.OTHER);
+                    statement.setObject(6, ingredient.getRequiredQuantity());
+
+                    if (ingredient.getDish() != null) {
+                        statement.setInt(5, ingredient.getDish().getId());
+                    } else {
+                        statement.setObject(5, null);
+                    }
+
+                    statement.addBatch();
                 }
 
-                statement.addBatch();
-            }
-
-            statement.executeBatch();
-            connection.commit();
-            return newIngredients;
-
-        } catch (SQLException e) {
-            connection.rollback();
-            throw new RuntimeException(e);
-
-        } finally {
-            try {
-                connection.close();
+                statement.executeBatch();
+                connection.commit();
+                return newIngredients;
 
             } catch (SQLException e) {
-                e.printStackTrace();
-
+                connection.rollback();
+                throw new RuntimeException("Not allowed", e);
             }
+        }
 
+        catch (SQLException e) {
+            throw new RuntimeException(e);
         }
 
     }
@@ -269,9 +284,6 @@ public class DataRetriever {
 
     public List<Dish> findDishByIngredientName(String ingredientName) throws SQLException {
 
-        DBConnection dbconnection = new DBConnection();
-        Connection connection = dbconnection.getConnection();
-
         String sql = """
               SELECT DISTINCT d.id AS dish_id, d.name AS dish_name, d.dish_type AS dish_type 
               FROM dish d 
@@ -279,6 +291,7 @@ public class DataRetriever {
               WHERE i.name ILIKE ?
         """;
 
+        Connection connection = dbconnection.getConnection();
         List<Dish> dishes = new ArrayList<>();
 
         PreparedStatement statement = connection.prepareStatement(sql);
