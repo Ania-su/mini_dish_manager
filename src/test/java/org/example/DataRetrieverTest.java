@@ -131,8 +131,27 @@ public class DataRetrieverTest {
     @Test
     void findDishsByIngredientName() throws SQLException {
         assertEquals(
-                "Poulet grillé",
-                dataRetriever.findDishByIngredientName("pou").getFirst().getName()
+                "Gâteau au chocolat",
+                dataRetriever.findDishByIngredientName("eur").getFirst().getName()
         );
     }
+
+    @Test
+    void findIngredientsByCriteria() throws SQLException {
+
+        assertTrue(dataRetriever.findIngredientsByCriteria(null, Ingredient.CategoryEnum.VEGETABLE, null, 1, 10)
+                .stream()
+                .map(Ingredient::getName)
+                .toList()
+                .containsAll(List.of("Tomate", "Laitue")));
+
+        assertEquals(0, dataRetriever.findIngredientsByCriteria("cho", null, "sal", 1, 10).size());
+
+        assertTrue(dataRetriever.findIngredientsByCriteria("cho", null, "gâteau", 1, 10)
+                .stream()
+                .map(Ingredient::getName)
+                .toList()
+                .contains("Chocolat"));
+    }
+
 }
