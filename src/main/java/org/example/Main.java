@@ -14,7 +14,7 @@ public class Main {
         DataRetriever dataRetriever = new DataRetriever(new DBConnection());
 
         try {
-            Dish dish = dataRetriever.findDishById(5);
+            Dish dish = dataRetriever.findDishById(4);
 
             System.out.println("Dish name : " + dish.getName());
             System.out.println("Type : " + dish.getDishType());
