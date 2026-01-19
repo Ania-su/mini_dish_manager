@@ -23,17 +23,15 @@ public class Ingredient {
     private Double price;
     private CategoryEnum category;
     private Dish dish;
-    private Double requiredQuantity;
 
     public String getDishName() {
         return dish != null ? dish.getName() : null;
     }
 
-    public Ingredient(int id, String name, Double price, CategoryEnum category, Double requiredQuantity) {
+    public Ingredient(int id, String name, Double price, CategoryEnum category) {
         this.id = id;
         this.name = name;
         this.price = price;
         this.category = category;
-        this.requiredQuantity = requiredQuantity;
     }
 }

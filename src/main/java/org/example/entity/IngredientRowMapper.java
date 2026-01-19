@@ -16,14 +16,8 @@ public class IngredientRowMapper {
 
         Ingredient.CategoryEnum category = Ingredient.CategoryEnum.valueOf(rs.getString("ingredient_category"));
 
-        BigDecimal bd = (BigDecimal) rs.getObject("required_quantity");
-        Double requiredQuantity = bd != null ? bd.doubleValue() : null;
-        Ingredient ingredient = new Ingredient(
-                id, name, price, category, requiredQuantity
+        return new Ingredient(
+                id, name, price, category
         );
-
-        ingredient.setRequiredQuantity(requiredQuantity);
-
-        return ingredient;
     }
 }

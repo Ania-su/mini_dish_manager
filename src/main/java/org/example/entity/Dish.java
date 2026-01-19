@@ -24,20 +24,28 @@ public class Dish {
     private int id;
     private String name;
     private DishTypeEnum dishType;
-    private List<Ingredient> ingredients = new ArrayList<>();
+    private Double sellingPrice;
+    private List<DishIngredient> ingredients = new ArrayList<>();
 
     public double getDishCost() {
         double cost = 0;
-        for (Ingredient ingredient : ingredients) {
-            Double quantity = ingredient.getRequiredQuantity();
+        for (DishIngredient di : ingredients) {
+            Double quantity = di.getQuantity_required();
             if (quantity == null) {
                 throw new IllegalArgumentException("Exeption : unknown value for required quantity");
             }
             else {
-                cost += quantity * ingredient.getPrice();
+                cost += quantity * di.getIngredient().getPrice();
             }
         }
         return cost;
+    }
+
+    public double getGrossMargin() {
+        if (sellingPrice == null) {
+            throw new IllegalArgumentException("Exeption : sellingPrice is null");
+        }
+        return sellingPrice - getDishCost();
     }
 
 }

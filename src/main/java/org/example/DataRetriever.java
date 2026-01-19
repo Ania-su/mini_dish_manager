@@ -29,7 +29,8 @@ public class DataRetriever {
                    i.category AS ingredient_category,
                    i.required_quantity
             FROM dish d
-            LEFT JOIN ingredient i ON d.id = i.id_dish
+            JOIN DishIngredient di ON d.id = di.id_dish
+            JOIN Ingredient i ON di.id_ingredient = i.id
             WHERE d.id = ?
             """;
 
@@ -193,7 +194,7 @@ public class DataRetriever {
                     statement.executeUpdate();
                 }
                 if (dishToSave.getIngredients() != null && !dishToSave.getIngredients().isEmpty()) {
-                    try (PreparedStatement deleteStatement = connection.prepareStatement("DELETE FROM Ingredient WHERE id_dish = ?")) {
+                    try (PreparedStatement deleteStatement = connection.prepareStatement("INSERT INTO DishIngredient (id_dish, id_ingredient, quantity, unit)")) {
                         deleteStatement.setInt(1, dishToSave.getId());
                         deleteStatement.executeUpdate();
                     }
@@ -231,7 +232,8 @@ public class DataRetriever {
         String sql = """
               SELECT DISTINCT d.id AS dish_id, d.name AS dish_name, d.dish_type AS dish_type 
               FROM dish d 
-              JOIN ingredient i ON d.id = i.id_dish 
+              JOIN DishIngredient di ON d.id = di.id_dish
+              JOIN Ingredient i ON di.id_ingredient = i.id
               WHERE i.name ILIKE ?
         """;
 
@@ -277,7 +279,8 @@ public class DataRetriever {
                     "d.name AS dish_name, " +
                     "d.dish_type " +
                 "FROM Ingredient i " +
-                "LEFT JOIN Dish d ON i.id_dish = d.id");
+                "LEFT JOIN Dish d ON i.id_dish = d.id" +
+                "LEFT JOIN DishIngredient");
 
         List<Object> param = new ArrayList<>();
         List<Ingredient> ingredients = new ArrayList<>();
