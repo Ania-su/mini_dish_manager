@@ -15,7 +15,7 @@ create table DishIngredient (
                                 UNIQUE (id_dish, id_ingredient)
 );
 
-INSERT INTO DishIngredient (id_dish, id_ingredient, quantity_required, unit_type)
+INSERT INTO DishIngredient (id, id_dish, id_ingredient, quantity_required, unit_type)
 values (default, 1, 1, 0.20, 'KG'),
        (default, 1, 2, 0.15, 'KG'),
        (default, 2, 3, 1.00, 'KG'),

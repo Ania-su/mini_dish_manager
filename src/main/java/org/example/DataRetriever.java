@@ -24,13 +24,13 @@ public class DataRetriever {
             SELECT d.id AS dish_id,
                    d.name AS dish_name,
                    d.dish_type AS dish_type,
-                   d.selling_price
+                   d.selling_price,
                    i.id AS ingredient_id,
                    i.name AS ingredient_name,
                    i.price AS ingredient_price,
                    i.category AS ingredient_category,
                    di.id AS dishIngredient_id,
-                   di.required_quantity,
+                   di.quantity_required,
                    di.unit_type
             FROM dish d
             JOIN DishIngredient di ON d.id = di.id_dish
@@ -61,13 +61,13 @@ public class DataRetriever {
                 if (rs.getObject("ingredient_id") != null) {
                     Ingredient ingredient = new Ingredient(
                             rs.getInt("ingredient_id"),
-                            rs.getString("ingredient_neme"),
+                            rs.getString("ingredient_name"),
                             rs.getDouble("ingredient_price"),
                             Ingredient.CategoryEnum.valueOf(rs.getString("ingredient_category"))
                     );
 
                     DishIngredient di = new DishIngredient();
-                    di.setId(rs.getInt("dish_ingredient_id"));
+                    di.setId(rs.getInt("dishIngredient_id"));
                     di.setDish(dish);
                     di.setIngredient(ingredient);
                     di.setQuantity_required(rs.getObject("quantity_required") != null ? rs.getDouble("quantity_required") : null);
@@ -102,7 +102,7 @@ public class DataRetriever {
                 name AS ingredient_name, 
                 price AS ingredient_price, 
                 category AS ingredient_category, 
-                required_quantity
+                quantity_required
             FROM Ingredient
             ORDER BY id
             LIMIT ? OFFSET ?
@@ -140,7 +140,7 @@ public class DataRetriever {
 
         String checkSql = "SELECT 1 FROM Ingredient WHERE name = ?";
         String sql = """
-            INSERT INTO Ingredient (id ,name, price, category, id_dish, required_quantity)
+            INSERT INTO Ingredient (id ,name, price, category, id_dish, quantity_required)
             VALUES (?, ?, ?, ?::category, ?, ?)
         """;
 
@@ -308,7 +308,7 @@ public class DataRetriever {
                     "di.unit_type, " +
                     "d.id AS dish_id, " +
                     "d.name AS dish_name, " +
-                    "d.dish_type " +
+                    "d.dish_type, " +
                     "d.selling_price " +
                 "FROM Ingredient i " +
                 "JOIN DishIngredient di ON i.id = i.id_ingredient " +
