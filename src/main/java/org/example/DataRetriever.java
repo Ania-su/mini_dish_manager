@@ -262,8 +262,8 @@ public class DataRetriever {
     public List<Dish> findDishByIngredientName(String ingredientName) throws SQLException {
 
         String sql = """
-              SELECT DISTINCT d.id AS dish_id, d.name AS dish_name, d.dish_type AS dish_type 
-              FROM dish d 
+              SELECT DISTINCT d.id AS dish_id, d.name AS dish_name, d.dish_type, d.selling_price
+              FROM Dish d 
               JOIN DishIngredient di ON d.id = di.id_dish
               JOIN Ingredient i ON di.id_ingredient = i.id
               WHERE i.name ILIKE ?
@@ -277,17 +277,14 @@ public class DataRetriever {
             statement.setString(1, "%" + ingredientName + "%");
 
 
-            ResultSet resultSet = statement.executeQuery();
+            ResultSet rs = statement.executeQuery();
 
-            while (resultSet.next()) {
-                Dish dish = new Dish(
-                        resultSet.getInt("dish_id"),
-                        resultSet.getString("dish_name"),
-                        resultSet.get
-                        Dish.DishTypeEnum.valueOf(resultSet.getString("dish_type")),
-                        new ArrayList<>()
-                );
-
+            while (rs.next()) {
+                Dish dish = new Dish();
+                dish.setId(rs.getInt("dish_id"));
+                dish.setName(rs.getString("dish_name"));
+                dish.setDishType(Dish.DishTypeEnum.valueOf(rs.getString("dish_type")));
+                dish.setSellingPrice(rs.getObject("selling_price") != null ? rs.getDouble("selling_price") : null);
                 dishes.add(dish);
             }
 
