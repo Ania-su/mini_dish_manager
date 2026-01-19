@@ -1,6 +1,7 @@
 package org.example;
 
 import org.example.entity.Dish;
+import org.example.entity.DishIngredient;
 import org.example.entity.Ingredient;
 import org.example.entity.IngredientRowMapper;
 
@@ -23,11 +24,14 @@ public class DataRetriever {
             SELECT d.id AS dish_id,
                    d.name AS dish_name,
                    d.dish_type AS dish_type,
+                   d.selling_price
                    i.id AS ingredient_id,
                    i.name AS ingredient_name,
                    i.price AS ingredient_price,
                    i.category AS ingredient_category,
-                   i.required_quantity
+                   di.id AS dishIngredient_id,
+                   di.required_quantity,
+                   di.unit_type
             FROM dish d
             JOIN DishIngredient di ON d.id = di.id_dish
             JOIN Ingredient i ON di.id_ingredient = i.id
@@ -41,7 +45,7 @@ public class DataRetriever {
             ResultSet rs = statement.executeQuery();
 
             Dish dish = null;
-            List<Ingredient> ingredients = new ArrayList<>();
+            List<DishIngredient> dishIngredients = new ArrayList<>();
 
             while (rs.next()) {
                 if (dish == null) {
@@ -51,10 +55,26 @@ public class DataRetriever {
                     dish.setDishType(
                             Dish.DishTypeEnum.valueOf(rs.getString("dish_type"))
                     );
+                    dish.setSellingPrice(rs.getObject("selling_price") != null ? rs.getDouble("selling_price") : null);
                 }
 
                 if (rs.getObject("ingredient_id") != null) {
-                    ingredients.add(ingredientRowMapper.map(rs));
+                    Ingredient ingredient = new Ingredient(
+                            rs.getInt("ingredient_id"),
+                            rs.getString("ingredient_neme"),
+                            rs.getDouble("ingredient_price"),
+                            Ingredient.CategoryEnum.valueOf(rs.getString("ingredient_category"))
+                    );
+
+                    DishIngredient di = new DishIngredient();
+                    di.setId(rs.getInt("dish_ingredient_id"));
+                    di.setDish(dish);
+                    di.setIngredient(ingredient);
+                    di.setQuantity_required(rs.getObject("quantity_required") != null ? rs.getDouble("quantity_required") : null);
+                    di.setUnit_type(rs.getString("unit_type") != null ?
+                            DishIngredient.Unit.valueOf(rs.getString("unit_type")) : null);
+
+                    dishIngredients.add(di);
                 }
             }
 
@@ -62,7 +82,7 @@ public class DataRetriever {
                 throw new RuntimeException("Dish not found with id " + id);
             }
 
-            dish.setIngredients(ingredients);
+            dish.setIngredients(dishIngredients);
             return dish;
 
 
@@ -251,6 +271,7 @@ public class DataRetriever {
                 Dish dish = new Dish(
                         resultSet.getInt("dish_id"),
                         resultSet.getString("dish_name"),
+                        resultSet.get
                         Dish.DishTypeEnum.valueOf(resultSet.getString("dish_type")),
                         new ArrayList<>()
                 );
