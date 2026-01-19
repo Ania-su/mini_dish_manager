@@ -168,7 +168,6 @@ public class DataRetriever {
                     statement.setString(2, ingredient.getName());
                     statement.setDouble(3, ingredient.getPrice());
                     statement.setObject(4, ingredient.getCategory(), Types.OTHER);
-                    statement.setObject(6, ingredient.getRequiredQuantity());
 
                     if (ingredient.getDish() != null) {
                         statement.setInt(5, ingredient.getDish().getId());
@@ -200,43 +199,56 @@ public class DataRetriever {
             connection.setAutoCommit(false);
             try{
             String sql = """
-                    INSERT INTO Dish (id, name, dish_type)
-                    VALUES (?, ?, ?)
+                    INSERT INTO Dish (id, name, dish_type, selling_price)
+                    VALUES (?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE
                     SET name = EXCLUDED.name,
                         dish_type = EXCLUDED.dish_type
+                        selling_price = EXCLUDED.selling_price
                     """;
 
                 try (PreparedStatement statement = connection.prepareStatement(sql)) {
                     statement.setInt(1, dishToSave.getId());
                     statement.setString(2, dishToSave.getName());
                     statement.setObject(3, dishToSave.getDishType().name(), Types.OTHER);
+                    if (dishToSave.getSellingPrice() != null) {
+                        statement.setDouble(4, dishToSave.getSellingPrice());
+                    } else {
+                        statement.setNull(4, Types.OTHER);
+                    }
                     statement.executeUpdate();
                 }
                 if (dishToSave.getIngredients() != null && !dishToSave.getIngredients().isEmpty()) {
-                    try (PreparedStatement deleteStatement = connection.prepareStatement("INSERT INTO DishIngredient (id_dish, id_ingredient, quantity, unit)")) {
+                    try (PreparedStatement deleteStatement = connection.prepareStatement("DELETE FROM Dish WHERE id = ?")) {
                         deleteStatement.setInt(1, dishToSave.getId());
                         deleteStatement.executeUpdate();
                     }
 
-                    try (PreparedStatement insertAssocStatement = connection.prepareStatement("INSERT INTO Ingredient (id_dish, id, name, price, category, required_quantity ) VALUES (?, ?, ?, ?, ?, ?)")) {
-                        for (Ingredient ingredient : dishToSave.getIngredients()) {
-                            insertAssocStatement.setInt(1, dishToSave.getId());
-                            insertAssocStatement.setInt(2, ingredient.getId());
-                            insertAssocStatement.setString(3, ingredient.getName());
-                            insertAssocStatement.setDouble(4, ingredient.getPrice());
-                            insertAssocStatement.setObject(5, ingredient.getCategory(), Types.OTHER);
-                            insertAssocStatement.setDouble(6, ingredient.getRequiredQuantity());
-                            insertAssocStatement.addBatch();
+                    try (PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO DishIngredient (id_dish, id_ingredient, quantity_required, unit_type ) VALUES (?, ?, ?, ?::unit_type)")) {
+                        for (DishIngredient di : dishToSave.getIngredients()) {
+                            insertStatement.setInt(1, dishToSave.getId());
+                            insertStatement.setInt(2, di.getIngredient().getId());
+                            if (di.getQuantity_required() != null) {
+                                insertStatement.setDouble(3, di.getQuantity_required());
+                            } else {
+                                insertStatement.setNull(3, Types.OTHER);
+                            }
+
+                            if (di.getUnit_type() != null) {
+                                insertStatement.setObject(4, di.getUnit_type());
+                            } else {
+                                insertStatement.setNull(4, Types.OTHER);
+                            }
+
+                            insertStatement.addBatch();
                         }
-                        insertAssocStatement.executeBatch();
+                        insertStatement.executeBatch();
                     }
                 }
             connection.commit();
             return dishToSave;
 
             } catch (SQLException e) {
-                e.printStackTrace();
                 connection.rollback();
                 throw new RuntimeException("Dish was not saved",e);
             }
