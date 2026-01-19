@@ -304,13 +304,16 @@ public class DataRetriever {
                     "i.name AS ingredient_name, " +
                     "i.price AS ingredient_price," +
                     "i.category AS ingredient_category, " +
-                    "i.required_quantity, " +
+                    "di.quantity_required, " +
+                    "di.unit_type, " +
                     "d.id AS dish_id, " +
                     "d.name AS dish_name, " +
                     "d.dish_type " +
+                    "d.selling_price " +
                 "FROM Ingredient i " +
-                "LEFT JOIN Dish d ON i.id_dish = d.id" +
-                "LEFT JOIN DishIngredient");
+                "JOIN DishIngredient di ON i.id = i.id_ingredient " +
+                "JOIN Dish d ON i.id_dish = d.id"
+                );
 
         List<Object> param = new ArrayList<>();
         List<Ingredient> ingredients = new ArrayList<>();
@@ -351,15 +354,20 @@ public class DataRetriever {
                 while (rs.next()) {
                     Ingredient ingredient = ingredientRowMapper.map(rs);
                     int dishId = rs.getInt("dish_id");
-                    if (!rs.wasNull()) {
-                        Dish dish = new Dish(
-                                dishId,
-                                rs.getString("dish_name"),
-                                Dish.DishTypeEnum.valueOf(rs.getString("dish_type")),
-                                new ArrayList<>()
-                        );
-                        dish.getIngredients().add(ingredient);
-                    }
+                    Dish dish = new Dish(
+                            dishId,
+                            rs.getString("dish_name"),
+                            Dish.DishTypeEnum.valueOf(rs.getString("dish_type")),
+                            rs.getDouble("selling_price"),
+                            new ArrayList<>()
+                    );
+
+                    DishIngredient dishIngredient = new DishIngredient();
+                    dishIngredient.setId(dishId);
+                    dishIngredient.setIngredient(ingredient);
+                    dishIngredient.setQuantity_required(rs.getDouble("quantity_required"));
+                    dishIngredient.setUnit_type(rs.getObject("unit_type") != null ? DishIngredient.Unit.valueOf("unit_type") : null);
+
                     ingredients.add(ingredient);
                 }
             }
