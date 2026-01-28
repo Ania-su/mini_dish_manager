@@ -1,9 +1,6 @@
 package org.example;
 
-import org.example.entity.Dish;
-import org.example.entity.DishIngredient;
-import org.example.entity.Ingredient;
-import org.example.entity.IngredientRowMapper;
+import org.example.entity.*;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -376,11 +373,57 @@ public class DataRetriever {
     }
 
     public Ingredient saveIngredient(Ingredient toSave) throws SQLException {
+        try (Connection connection = dbconnection.getConnection()) {
+            connection.setAutoCommit(false);
 
+            try {
+                String sql = """
+                        INSERT INTO Ingredient (id, name, price, catégory) 
+                        VALUES (?, ?, ?, ?::category)
+                        ON CONFLICT (id) DO UPDATE
+                        SET name = EXCLUDED.name,
+                            price = EXCLUDED.price,
+                            category = EXCLUDED.category
+                        """;
 
+                try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                    statement.setInt(1, toSave.getId());
+                    statement.setString(2, toSave.getName());
+                    statement.setDouble(3, toSave.getPrice());
+                    statement.setObject(4, toSave.getCategory());
+                    statement.executeUpdate();
+                }
 
-
-        return toSave;
+                if (toSave.getStockMovementList() != null && !toSave.getStockMovementList().isEmpty()) {
+                    String stockSQL = """
+                            INSERT INTO StockMovement
+                            (id, id_ingredient, quantity, type, unit, creation_datetime)
+                            VALUES (?, ?, ?, ?::movement_type, ?::unit, ?)
+                            ON CONFLICT(id) DO NOTHING
+                    """;
+                    try (PreparedStatement statement = connection.prepareStatement(stockSQL)) {
+                        for (StockMovement sm : toSave.getStockMovementList()) {
+                            statement.setInt(1, sm.getId());
+                            statement.setInt(2, toSave.getId());
+                            statement.setDouble(3, sm.getValue().getQuantity());
+                            statement.setObject(4, sm.getType().name(), Types.OTHER);
+                            statement.setObject(5, sm.getValue().getUnit().name(), Types.OTHER);
+                            statement.setTimestamp(6, Timestamp.from(sm.getCreationDateTime()));
+                            statement.addBatch();
+                        }
+                        statement.executeBatch();
+                    }
+                }
+                connection.commit();
+                return toSave;
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new RuntimeException("Error of saving",e);
+            }
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }
