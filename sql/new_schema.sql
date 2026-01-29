@@ -64,3 +64,12 @@ CREATE TABLE DishOrder (
     FOREIGN KEY (id_dish) REFERENCES Dish(id),
     quantity int not null
 );
+
+CREATE TABLE Sale (
+    id serial primary key unique not null,
+    creationDatetime TIMESTAMP not null
+);
+
+CREATE TYPE payment_status as enum ('PAID', 'UNPAID');
+ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS status payment_status;
+ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS id_sale int REFERENCES Sale(id);

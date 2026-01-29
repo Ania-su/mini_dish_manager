@@ -14,10 +14,17 @@ import java.util.List;
 @Setter
 
 public class Order {
+
+    public enum PaymentStatus {
+        PAID, UNPAID
+    }
+
     private int id;
     private String reference;
     private Instant creationDatetime;
     private List<DishOrder> dishOrders;
+    private Sale sale;
+    private PaymentStatus paymentStatus;
 
     public Double getTotalAmountWithoutVAT() {
         if (dishOrders == null || dishOrders.isEmpty()) {
