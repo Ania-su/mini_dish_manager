@@ -24,7 +24,7 @@ public class DataRetriever {
         int offset = (page - 1) * size;
 
         String sql = """
-            SELECT 
+            SELECT
                 id AS ingredient_id, 
                 name AS ingredient_name, 
                 price AS ingredient_price, 
@@ -51,6 +51,24 @@ public class DataRetriever {
         }
 
         return ingredients;
+    }
+
+    public Ingredient findIngredientById(Integer id) {
+        try (Connection connection = dbconnection.getConnection()) {
+            PreparedStatement preparedStatement = connection.prepareStatement("select id, name, price, category from ingredient where id = ?;");
+            preparedStatement.setInt(1, id);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                int idIngredient = resultSet.getInt("id");
+                String name = resultSet.getString("name");
+                Ingredient.CategoryEnum category = Ingredient.CategoryEnum.valueOf(resultSet.getString("category"));
+                Double price = resultSet.getDouble("price");
+                return new Ingredient(idIngredient, name, price, category, findStockMovementByIngredientId(idIngredient));
+            }
+            throw new RuntimeException("Ingredient not found " + id);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private List<DishIngredient> findIngredientByDishId(Integer idDish) throws SQLException {
@@ -304,8 +322,7 @@ public class DataRetriever {
     }
 
     public Dish findDishById(Integer id) throws SQLException {
-        DBConnection dbConnection = new DBConnection();
-        Connection connection = dbConnection.getConnection();
+        Connection connection = dbconnection.getConnection();
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(
                     """
@@ -364,10 +381,12 @@ public class DataRetriever {
                     statement.executeUpdate();
                 }
                 if (dishToSave.getIngredients() != null && !dishToSave.getIngredients().isEmpty()) {
-                    try (PreparedStatement deleteStatement = connection.prepareStatement("DELETE FROM DishIngredient WHERE id_ingredient = ? and id_dish = ?")) {
-                        deleteStatement.setInt(1, dishToSave.getId());
-//                        deleteStatement.setInt(2, .getIngredient().getId());
-                        deleteStatement.executeUpdate();
+                    try (PreparedStatement deleteStatement = connection.prepareStatement("DELETE FROM DishIngredient WHERE id_dish = ? and id_ingredient = ?")) {
+                        for (DishIngredient dishIngredient : dishToSave.getIngredients()) {
+                            deleteStatement.setInt(1, dishToSave.getId());
+                            deleteStatement.setInt(2, dishIngredient.getIngredient().getId());
+                            deleteStatement.executeUpdate();
+                        }
                     }
 
 
@@ -393,12 +412,12 @@ public class DataRetriever {
                     }
                 }
                 connection.commit();
-                return dishToSave;
 
             } catch (SQLException e) {
                 connection.rollback();
                 throw new RuntimeException("Dish was not saved",e);
             }
+            return dishToSave;
 
         } catch (SQLException e){
             throw new RuntimeException(e);
@@ -409,7 +428,7 @@ public class DataRetriever {
 
         String sql = """
               SELECT DISTINCT d.id AS dish_id, d.name AS dish_name, d.dish_type, d.selling_price
-              FROM Dish d 
+              FROM Dish d
               JOIN DishIngredient di ON d.id = di.id_dish
               JOIN Ingredient i ON di.id_ingredient = i.id
               WHERE i.name ILIKE ?
@@ -443,8 +462,7 @@ public class DataRetriever {
     }
 
     public List<StockMovement> findStockMovementByIngredientId (Integer id) throws SQLException {
-        DBConnection dbConnection = new DBConnection();
-        Connection connection = dbConnection.getConnection();
+        Connection connection = dbconnection.getConnection();
         List<StockMovement> stockMovementList = new ArrayList<>();
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(
@@ -481,6 +499,10 @@ public class DataRetriever {
 
         List<DishOrder> dishOrderList = toSave.getDishOrders();
 
+        if (toSave.getPaymentStatus() == Order.PaymentStatus.PAID) {
+            throw new RuntimeException("Order already PAID and cannot be modified");
+        }
+
         for (DishOrder dishOrder : dishOrderList) {
             Dish dish = dishOrder.getDish();
             List<DishIngredient> dishIngredients = dish.getIngredients();
@@ -510,16 +532,25 @@ public class DataRetriever {
                 int orderId;
 
                 String orderSQL = """
-                INSERT INTO "Order" (id, creation_datetime)
-                VALUES (?, ?)
+                INSERT INTO "Order" (id, creation_datetime, status, id_sale)
+                VALUES (?, ?, ?::status, ?)
                 ON CONFLICT(id) DO UPDATE
-                SET creation_datetime = EXCLUDED.creation_datetime
+                SET creation_datetime = EXCLUDED.creation_datetime,
+                    status = EXCLUDED.status,
+                    id_sale = EXCLUDED.id_sale
                 RETURNING id
             """;
 
                 try (PreparedStatement ps = connection.prepareStatement(orderSQL)) {
                     ps.setInt(1, toSave.getId());
                     ps.setTimestamp(2, Timestamp.from(toSave.getCreationDatetime()));
+                    ps.setObject(3, toSave.getPaymentStatus().name(), Types.OTHER);
+                    if (toSave.getSale() != null) {
+                        ps.setInt(4, toSave.getSale().getId());
+                    } else {
+                        ps.setNull(4, Types.INTEGER);
+                    }
+
 
                     try (ResultSet rs = ps.executeQuery()) {
                         rs.next();
@@ -527,25 +558,29 @@ public class DataRetriever {
                     }
                 }
 
-                String dishOrderSQL = """
+                try(PreparedStatement deleteStatement = connection.prepareStatement("DELETE FROM DishOrder WHERE id_order = ?;")) {
+                    deleteStatement.setInt(1, orderId);
+                    deleteStatement.executeUpdate();
+
+                    String dishOrderSQL = """
                     INSERT INTO DishOrder(id_order, id_dish, quantity)
                     VALUES (?, ?, ?)
                 """;
-
-                try (PreparedStatement ps = connection.prepareStatement(dishOrderSQL)) {
-                    for (DishOrder dishOrder : toSave.getDishOrders()) {
-                        ps.setInt(1, orderId);
-                        ps.setInt(2, dishOrder.getDish().getId());
-                        ps.setInt(3, dishOrder.getQuantity());
-                        ps.addBatch();
+                    try (PreparedStatement ps = connection.prepareStatement(dishOrderSQL)) {
+                        for (DishOrder dishOrder : toSave.getDishOrders()) {
+                            ps.setInt(1, orderId);
+                            ps.setInt(2, dishOrder.getDish().getId());
+                            ps.setInt(3, dishOrder.getQuantity());
+                            ps.addBatch();
+                        }
+                        ps.executeBatch();
                     }
-                    ps.executeBatch();
                 }
 
                 String stockSQL = """
                     INSERT INTO StockMovement
-                    (id, id_ingredient, quantity, type, unit, creation_datetime)
-                    VALUES (?, ?, ?, ?::movement_type, ?::unit, ?)
+                    (id_ingredient, quantity, type, unit, creation_datetime)
+                    VALUES (?, ?, ?::movement_type, ?::unit, ?)
                 """;
 
                 try (PreparedStatement ps = connection.prepareStatement(stockSQL)) {
@@ -561,12 +596,12 @@ public class DataRetriever {
                                     dishIngredient.getQuantity_required()
                                             * dishOrder.getQuantity();
 
-                            ps.setInt(1, (int) (System.currentTimeMillis() % Integer.MAX_VALUE));
-                            ps.setInt(2, ingredient.getId());
-                            ps.setDouble(3, outQuantity);
-                            ps.setObject(4, StockMovement.MovementType.OUT.name(), Types.OTHER);
-                            ps.setObject(5, dishIngredient.getUnit_type().name(), Types.OTHER);
-                            ps.setTimestamp(6, Timestamp.from(now()));
+//                            ps.setInt(1, (int) (System.currentTimeMillis() % Integer.MAX_VALUE));
+                            ps.setInt(1, ingredient.getId());
+                            ps.setDouble(2, outQuantity);
+                            ps.setObject(3, StockMovement.MovementType.OUT.name(), Types.OTHER);
+                            ps.setObject(4, dishIngredient.getUnit_type().name(), Types.OTHER);
+                            ps.setTimestamp(5, Timestamp.from(now()));
 
                             ps.addBatch();
                         }
@@ -588,7 +623,7 @@ public class DataRetriever {
         try (Connection connection = dbconnection.getConnection()) {
 
             PreparedStatement preparedStatement =connection.prepareStatement("""
-                select id, reference, creation_datetime
+                select id, reference, creation_datetime, status, id_sale
                 from "Order"
                 where reference like ?
             """);
@@ -601,6 +636,12 @@ public class DataRetriever {
                 order.setId(resultSet.getInt("id"));
                 order.setReference(resultSet.getString("reference"));
                 order.setCreationDatetime(resultSet.getTimestamp("creation_datetime").toInstant());
+                order.setPaymentStatus((Order.PaymentStatus.valueOf(resultSet.getString("status"))));
+                if(resultSet.getObject("id_sale") != null) {
+                    Sale sale = new Sale();
+                    sale.setId(resultSet.getInt("id_sale"));
+                    order.setSale(sale);
+                };
                 order.setDishOrders(findDishOrderByIdOrder(order.getId()));
                 return order;
             }
@@ -644,6 +685,69 @@ public class DataRetriever {
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public Sale createSaleFrom (Order order) throws SQLException {
+        if (order == null) {
+            throw new RuntimeException("Order is null");
+        }
+
+        if (order.getPaymentStatus() != Order.PaymentStatus.PAID) {
+            throw new RuntimeException("Sale can only be created from a PAID order");
+        }
+
+        if (order.getSale() != null) {
+            throw new RuntimeException("Order already linked to a Sale");
+        }
+        try (Connection connection = dbconnection.getConnection()) {
+            connection.setAutoCommit(false);
+
+            try {
+                int saleId;
+
+                String saleSQL = """
+                    INSERT INTO Sale(creationDatetime)
+                    VALUES (?)
+                    RETURNING id
+                """;
+
+                try (PreparedStatement ps = connection.prepareStatement(saleSQL)) {
+//                    ps.setInt(1, 0);
+                    ps.setTimestamp(1, Timestamp.from(now()));
+
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            throw new RuntimeException("Sale already exists");
+                        }
+                        saleId = rs.getInt(1);
+                    }
+                }
+
+                String updateOrderSQL = """
+                    UPDATE "Order"
+                    SET id_sale = ?
+                    WHERE id = ?
+                """;
+
+                try (PreparedStatement ps = connection.prepareStatement(updateOrderSQL)) {
+                    ps.setInt(1, saleId);
+                    ps.setInt(2, order.getId());
+                    ps.executeUpdate();
+                }
+
+                connection.commit();
+
+                Sale sale = new Sale();
+                sale.setId(saleId);
+                sale.setCreationDatetime(now());
+                sale.setOrder(order);
+                return sale;
+
+            } catch (Exception e) {
+                connection.rollback();
+                throw new RuntimeException("Error while creating sale", e);
+            }
         }
     }
 
