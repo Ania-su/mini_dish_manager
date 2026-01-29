@@ -562,19 +562,20 @@ public class DataRetriever {
                     deleteStatement.setInt(1, orderId);
                     deleteStatement.executeUpdate();
 
-                    String dishOrderSQL = """
+                }
+
+                String dishOrderSQL = """
                     INSERT INTO DishOrder(id_order, id_dish, quantity)
                     VALUES (?, ?, ?)
                 """;
-                    try (PreparedStatement ps = connection.prepareStatement(dishOrderSQL)) {
-                        for (DishOrder dishOrder : toSave.getDishOrders()) {
-                            ps.setInt(1, orderId);
-                            ps.setInt(2, dishOrder.getDish().getId());
-                            ps.setInt(3, dishOrder.getQuantity());
-                            ps.addBatch();
-                        }
-                        ps.executeBatch();
+                try (PreparedStatement ps = connection.prepareStatement(dishOrderSQL)) {
+                    for (DishOrder dishOrder : toSave.getDishOrders()) {
+                        ps.setInt(1, orderId);
+                        ps.setInt(2, dishOrder.getDish().getId());
+                        ps.setInt(3, dishOrder.getQuantity());
+                        ps.addBatch();
                     }
+                    ps.executeBatch();
                 }
 
                 String stockSQL = """
