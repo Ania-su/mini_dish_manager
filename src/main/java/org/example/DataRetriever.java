@@ -18,74 +18,6 @@ public class DataRetriever {
         this.dbconnection = dbconnection;
     }
 
-//    public Dish findDishById(int id) {
-//
-//        try (Connection connection = dbconnection.getConnection()) {
-//            Dish dish = null;
-//            try(PreparedStatement statement = connection.prepareStatement("SELECT d.id AS dish_id, d.name AS dish_name, d.dish_type, d.selling_price FROM Dish d where id = ?")) {
-//                statement.setInt(1, id);
-//                ResultSet rs = statement.executeQuery();
-//
-//                if (rs.next()) {
-//                    dish = new Dish();
-//                    dish.setId(rs.getInt("dish_id"));
-//                    dish.setName(rs.getString("dish_name"));
-//                    dish.setDishType(
-//                            Dish.DishTypeEnum.valueOf(rs.getString("dish_type"))
-//                    );
-//                    dish.setSellingPrice(rs.getObject("selling_price") != null ? rs.getDouble("selling_price") : null);
-//                }
-//            }
-//            List<DishIngredient> dishIngredients = new ArrayList<>();
-//
-//            try(PreparedStatement statement = connection.prepareStatement
-//                    ("SELECT " +
-//                            "di.id AS dishIngredient_id, " +
-//                            "di.quantity_required, " +
-//                            "di.unit_type, " +
-//                            "i.id AS ingredient_id, " +
-//                            "i.name AS ingredient_name, " +
-//                            "i.price AS ingredient_price, " +
-//                            "i.category AS ingredient_category " +
-//                            "FROM DishIngredient di " +
-//                            "JOIN Ingredient i ON di.id_ingredient = i.id " +
-//                            "WHERE di.id_dish = ?")){
-//
-//                statement.setInt(1, id);
-//                ResultSet rs = statement.executeQuery();
-//                while (rs.next()) {
-//                    if (rs.getObject("ingredient_id") != null) {
-//                        Ingredient ingredient = new Ingredient(
-//                                rs.getInt("ingredient_id"),
-//                                rs.getString("ingredient_name"),
-//                                rs.getDouble("ingredient_price"),
-//                                Ingredient.CategoryEnum.valueOf(rs.getString("ingredient_category"))
-//                        );
-//
-//                        DishIngredient di = new DishIngredient();
-//                        di.setId(rs.getInt("dishIngredient_id"));
-//                        di.setDish(dish);
-//                        di.setIngredient(ingredient);
-//                        di.setQuantity_required(rs.getObject("quantity_required") != null ? rs.getDouble("quantity_required") : null);
-//                        di.setUnit_type(rs.getString("unit_type") != null ?
-//                                DishIngredient.Unit.valueOf(rs.getString("unit_type")) : null);
-//                        dishIngredients.add(di);
-//                    }
-//                }
-//            }
-//
-//            if (dish == null) {
-//                throw new RuntimeException("Dish not found with id " + id);
-//            }
-//
-//            dish.setIngredients(dishIngredients);
-//            return dish;
-//
-//        } catch (SQLException e) {
-//            throw new RuntimeException(e);
-//        }
-//    }
-
     public List<Ingredient> findIngredients(int page, int size) {
         List<Ingredient> ingredients = new ArrayList<>();
 
@@ -121,7 +53,6 @@ public class DataRetriever {
         return ingredients;
     }
 
-
     private List<DishIngredient> findIngredientByDishId(Integer idDish) throws SQLException {
 
         Connection connection = dbconnection.getConnection();
@@ -137,9 +68,9 @@ public class DataRetriever {
                                 ingredient.price,
                                 ingredient.category,
                                 di.quantity_required,
-                                di.unit
+                                di.unit_type
                             from ingredient
-                            join dish_ingredient di
+                            join dishingredient di
                             on di.id_ingredient = ingredient.id
                             where id_dish = ?;
                             """);
@@ -157,7 +88,7 @@ public class DataRetriever {
                 DishIngredient dishIngredient = new DishIngredient();
                 dishIngredient.setIngredient(ingredient);
                 dishIngredient.setQuantity_required(resultSet.getObject("quantity_required") == null ? null : resultSet.getDouble("quantity_required"));
-                dishIngredient.setUnit_type(DishIngredient.Unit.valueOf(resultSet.getString("unit")));
+                dishIngredient.setUnit_type(DishIngredient.Unit.valueOf(resultSet.getString("unit_type")));
 
                 dishIngredients.add(dishIngredient);
             }
@@ -183,8 +114,12 @@ public class DataRetriever {
 
         String checkSql = "SELECT 1 FROM Ingredient WHERE name = ?";
         String sql = """
-            INSERT INTO Ingredient (id ,name, price, category, id_dish, quantity_required)
-            VALUES (?, ?, ?, ?::category, ?, ?)
+            INSERT INTO Ingredient (id ,name, price, category)
+            VALUES (?, ?, ?, ?::category)
+            ON CONFLICT (id) DO UPDATE
+            SET name = EXCLUDED.name,
+                price = EXCLUDED.price,
+                category = EXCLUDED.category
         """;
 
         try (Connection connection = dbconnection.getConnection();){
@@ -211,7 +146,6 @@ public class DataRetriever {
                     statement.setString(2, ingredient.getName());
                     statement.setDouble(3, ingredient.getPrice());
                     statement.setObject(4, ingredient.getCategory(), Types.OTHER);
-
                     statement.addBatch();
                 }
 
@@ -231,17 +165,191 @@ public class DataRetriever {
 
     }
 
+//    public List<Ingredient> findIngredientsByCriteria(String ingredientName, Ingredient.CategoryEnum category, String dishName, int page, int size) throws SQLException {
+//
+//        StringBuilder sql = new StringBuilder(
+//                "SELECT " +
+//                    "i.id AS ingredient_id, " +
+//                    "i.name AS ingredient_name, " +
+//                    "i.price AS ingredient_price," +
+//                    "i.category AS ingredient_category, " +
+//                    "di.quantity_required, " +
+//                    "di.unit_type, " +
+//                    "d.id AS dish_id, " +
+//                    "d.name AS dish_name, " +
+//                    "d.dish_type, " +
+//                    "d.selling_price " +
+//                "FROM Ingredient i " +
+//                "JOIN DishIngredient di ON i.id = di.id_ingredient " +
+//                "JOIN Dish d ON di.id_dish = d.id"
+//                );
+//
+//        List<Object> param = new ArrayList<>();
+//        List<Ingredient> ingredients = new ArrayList<>();
+//        List<String> conditions = new ArrayList<>();
+//
+//        if (ingredientName != null && !ingredientName.isEmpty()) {
+//            conditions.add("i.name ILIKE ?");
+//            param.add("%" + ingredientName + "%");
+//        }
+//        if (category != null) {
+//            conditions.add("i.category = ?::category");
+//            param.add(category.name());
+//        }
+//        if (dishName != null && !dishName.isEmpty()) {
+//            conditions.add("d.name ILIKE ?");
+//            param.add("%" + dishName + "%");
+//        }
+//
+//        if (!conditions.isEmpty()) {
+//            sql.append(" WHERE ").append(String.join(" AND ", conditions));
+//        }
+//
+//        sql.append(" ORDER BY i.name");
+//
+//        int offset = (page - 1) * size;
+//        sql.append(" LIMIT ? OFFSET ?");
+//        param.add(size);
+//        param.add(offset);
+//
+//        try (Connection connection = dbconnection.getConnection()) {
+//            PreparedStatement statement = connection.prepareStatement(sql.toString());
+//
+//            for (int i = 0; i < param.size(); i++) {
+//                statement.setObject(i + 1, param.get(i));
+//            }
+//
+//            try (ResultSet rs = statement.executeQuery()) {
+//                while (rs.next()) {
+//                    Ingredient ingredient = ingredientRowMapper.map(rs);
+//                    int dishId = rs.getInt("dish_id");
+//                    Dish dish = new Dish(
+//                            dishId,
+//                            rs.getString("dish_name"),
+//                            Dish.DishTypeEnum.valueOf(rs.getString("dish_type")),
+//                            rs.getDouble("selling_price"),
+//                            new ArrayList<>()
+//                    );
+//
+//                    DishIngredient dishIngredient = new DishIngredient();
+//                    dishIngredient.setId(dishId);
+//                    dishIngredient.setIngredient(ingredient);
+//                    dishIngredient.setQuantity_required(rs.getDouble("quantity_required"));
+//                    dishIngredient.setUnit_type(rs.getObject("unit_type") != null ? DishIngredient.Unit.valueOf("unit_type") : null);
+//
+//                    ingredients.add(ingredient);
+//                }
+//            }
+//
+//        } catch (RuntimeException e){
+//            throw new RuntimeException("Error",e);
+//        }
+//        return ingredients;
+//    }
+
+    public Ingredient saveIngredient(Ingredient toSave) throws SQLException {
+        try (Connection connection = dbconnection.getConnection()) {
+            connection.setAutoCommit(false);
+
+            try {
+                String sql = """
+                        INSERT INTO Ingredient (id, name, price, category)
+                        VALUES (?, ?, ?, ?::category)
+                        ON CONFLICT (id) DO UPDATE
+                        SET name = EXCLUDED.name,
+                            price = EXCLUDED.price,
+                            category = EXCLUDED.category
+                        RETURNING id
+                        """;
+
+                try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                    statement.setInt(1, toSave.getId());
+                    statement.setString(2, toSave.getName());
+                    statement.setDouble(3, toSave.getPrice());
+                    statement.setObject(4, toSave.getCategory(), Types.OTHER);
+                    statement.executeQuery();
+                }
+
+                if (toSave.getStockMovementList() != null && !toSave.getStockMovementList().isEmpty()) {
+                    String stockSQL = """
+                            INSERT INTO StockMovement
+                            (id, id_ingredient, quantity, type, unit, creation_datetime)
+                            VALUES (?, ?, ?, ?::movement_type, ?::unit, ?)
+                            ON CONFLICT(id) DO NOTHING
+                    """;
+                    try (PreparedStatement statement = connection.prepareStatement(stockSQL)) {
+                        for (StockMovement sm : toSave.getStockMovementList()) {
+                            statement.setInt(1, sm.getId());
+                            statement.setInt(2, toSave.getId());
+                            statement.setDouble(3, sm.getValue().getQuantity());
+                            statement.setObject(4, sm.getType().name(), Types.OTHER);
+                            statement.setObject(5, sm.getValue().getUnit().name(), Types.OTHER);
+                            statement.setTimestamp(6, Timestamp.from(sm.getCreationDateTime()));
+                            statement.addBatch();
+                        }
+                        statement.executeBatch();
+                    }
+                }
+
+                connection.commit();
+                return toSave;
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new RuntimeException("Error of saving",e);
+            }
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Dish findDishById(Integer id) throws SQLException {
+        DBConnection dbConnection = new DBConnection();
+        Connection connection = dbConnection.getConnection();
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(
+                    """
+                            select
+                                dish.id as dish_id,
+                                dish.name as dish_name,
+                                dish_type,
+                                dish.selling_price as dish_price
+                            from dish
+                            where dish.id = ?;
+                            """);
+            preparedStatement.setInt(1, id);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                Dish dish = new Dish();
+                dish.setId(resultSet.getInt("dish_id"));
+                dish.setName(resultSet.getString("dish_name"));
+                dish.setDishType(Dish.DishTypeEnum.valueOf(resultSet.getString("dish_type")));
+                dish.setSellingPrice(resultSet.getObject("dish_price") == null
+                        ? null : resultSet.getDouble("dish_price"));
+                dish.setIngredients(findIngredientByDishId(id));
+                return dish;
+            }
+
+            connection.close();
+            throw new RuntimeException("Dish not found " + id);
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public Dish saveDish(Dish dishToSave) {
         try (Connection connection = dbconnection.getConnection()) {
             connection.setAutoCommit(false);
             try{
-            String sql = """
+                String sql = """
                     INSERT INTO Dish (id, name, dish_type, selling_price)
                     VALUES (?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE
                     SET name = EXCLUDED.name,
                         dish_type = EXCLUDED.dish_type,
                         selling_price = EXCLUDED.selling_price
+                    RETURNING id
                     """;
 
                 try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -258,6 +366,7 @@ public class DataRetriever {
                 if (dishToSave.getIngredients() != null && !dishToSave.getIngredients().isEmpty()) {
                     try (PreparedStatement deleteStatement = connection.prepareStatement("DELETE FROM DishIngredient WHERE id_ingredient = ? and id_dish = ?")) {
                         deleteStatement.setInt(1, dishToSave.getId());
+//                        deleteStatement.setInt(2, .getIngredient().getId());
                         deleteStatement.executeUpdate();
                     }
 
@@ -283,8 +392,8 @@ public class DataRetriever {
                         insertStatement.executeBatch();
                     }
                 }
-            connection.commit();
-            return dishToSave;
+                connection.commit();
+                return dishToSave;
 
             } catch (SQLException e) {
                 connection.rollback();
@@ -333,144 +442,6 @@ public class DataRetriever {
 
     }
 
-    public List<Ingredient> findIngredientsByCriteria(String ingredientName, Ingredient.CategoryEnum category, String dishName, int page, int size) throws SQLException {
-
-        StringBuilder sql = new StringBuilder(
-                "SELECT " +
-                    "i.id AS ingredient_id, " +
-                    "i.name AS ingredient_name, " +
-                    "i.price AS ingredient_price," +
-                    "i.category AS ingredient_category, " +
-                    "di.quantity_required, " +
-                    "di.unit_type, " +
-                    "d.id AS dish_id, " +
-                    "d.name AS dish_name, " +
-                    "d.dish_type, " +
-                    "d.selling_price " +
-                "FROM Ingredient i " +
-                "JOIN DishIngredient di ON i.id = i.id_ingredient " +
-                "JOIN Dish d ON i.id_dish = d.id"
-                );
-
-        List<Object> param = new ArrayList<>();
-        List<Ingredient> ingredients = new ArrayList<>();
-        List<String> conditions = new ArrayList<>();
-
-        if (ingredientName != null && !ingredientName.isEmpty()) {
-            conditions.add("i.name ILIKE ?");
-            param.add("%" + ingredientName + "%");
-        }
-        if (category != null) {
-            conditions.add("i.category = ?::category");
-            param.add(category.name());
-        }
-        if (dishName != null && !dishName.isEmpty()) {
-            conditions.add("d.name ILIKE ?");
-            param.add("%" + dishName + "%");
-        }
-
-        if (!conditions.isEmpty()) {
-            sql.append(" WHERE ").append(String.join(" AND ", conditions));
-        }
-
-        sql.append(" ORDER BY i.name");
-
-        int offset = (page - 1) * size;
-        sql.append(" LIMIT ? OFFSET ?");
-        param.add(size);
-        param.add(offset);
-
-        try (Connection connection = dbconnection.getConnection()) {
-            PreparedStatement statement = connection.prepareStatement(sql.toString());
-
-            for (int i = 0; i < param.size(); i++) {
-                statement.setObject(i + 1, param.get(i));
-            }
-
-            try (ResultSet rs = statement.executeQuery()) {
-                while (rs.next()) {
-                    Ingredient ingredient = ingredientRowMapper.map(rs);
-                    int dishId = rs.getInt("dish_id");
-                    Dish dish = new Dish(
-                            dishId,
-                            rs.getString("dish_name"),
-                            Dish.DishTypeEnum.valueOf(rs.getString("dish_type")),
-                            rs.getDouble("selling_price"),
-                            new ArrayList<>()
-                    );
-
-                    DishIngredient dishIngredient = new DishIngredient();
-                    dishIngredient.setId(dishId);
-                    dishIngredient.setIngredient(ingredient);
-                    dishIngredient.setQuantity_required(rs.getDouble("quantity_required"));
-                    dishIngredient.setUnit_type(rs.getObject("unit_type") != null ? DishIngredient.Unit.valueOf("unit_type") : null);
-
-                    ingredients.add(ingredient);
-                }
-            }
-
-        } catch (RuntimeException e){
-            throw new RuntimeException("Error",e);
-        }
-        return ingredients;
-    }
-
-    public Ingredient saveIngredient(Ingredient toSave) throws SQLException {
-        try (Connection connection = dbconnection.getConnection()) {
-            connection.setAutoCommit(false);
-
-            try {
-                String sql = """
-                        INSERT INTO Ingredient (id, name, price, catégory)
-                        VALUES (?, ?, ?, ?::category)
-                        ON CONFLICT (id) DO UPDATE
-                        SET name = EXCLUDED.name,
-                            price = EXCLUDED.price,
-                            category = EXCLUDED.category
-                        RETURNING id
-                        """;
-
-                try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                    statement.setInt(1, toSave.getId());
-                    statement.setString(2, toSave.getName());
-                    statement.setDouble(3, toSave.getPrice());
-                    statement.setObject(4, toSave.getCategory());
-                    statement.executeQuery();
-                }
-
-                if (toSave.getStockMovementList() != null && !toSave.getStockMovementList().isEmpty()) {
-                    String stockSQL = """
-                            INSERT INTO StockMovement
-                            (id, id_ingredient, quantity, type, unit, creation_datetime)
-                            VALUES (?, ?, ?, ?::movement_type, ?::unit, ?)
-                            ON CONFLICT(id) DO NOTHING
-                    """;
-                    try (PreparedStatement statement = connection.prepareStatement(stockSQL)) {
-                        for (StockMovement sm : toSave.getStockMovementList()) {
-                            statement.setInt(1, sm.getId());
-                            statement.setInt(2, toSave.getId());
-                            statement.setDouble(3, sm.getValue().getQuantity());
-                            statement.setObject(4, sm.getType().name(), Types.OTHER);
-                            statement.setObject(5, sm.getValue().getUnit().name(), Types.OTHER);
-                            statement.setTimestamp(6, Timestamp.from(sm.getCreationDateTime()));
-                            statement.addBatch();
-                        }
-                        statement.executeBatch();
-                    }
-                }
-
-                connection.commit();
-                return toSave;
-            } catch (SQLException e) {
-                connection.rollback();
-                throw new RuntimeException("Error of saving",e);
-            }
-        }
-        catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public List<StockMovement> findStockMovementByIngredientId (Integer id) throws SQLException {
         DBConnection dbConnection = new DBConnection();
         Connection connection = dbConnection.getConnection();
@@ -479,8 +450,8 @@ public class DataRetriever {
             PreparedStatement preparedStatement = connection.prepareStatement(
                     """
                             select id, quantity, unit, type, creation_datetime
-                            from stock_movement
-                            where stock_movement.id_ingredient = ?;
+                            from stockmovement
+                            where stockmovement.id_ingredient = ?;
                             """);
             preparedStatement.setInt(1, id);
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -521,7 +492,7 @@ public class DataRetriever {
                     throw new RuntimeException ("No stock found for ingredient " + dishIngredient.getIngredient().getName());
                 }
 
-                Double unitQuantity = dishIngredients.getFirst().getQuantity_required();
+                Double unitQuantity = dishIngredient.getQuantity_required();
                 Integer dishQuantity = dishOrder.getQuantity();
                 double requiredQuantity = unitQuantity * dishQuantity;
                 double availableQuantity = actualStock.getQuantity();
@@ -539,7 +510,7 @@ public class DataRetriever {
                 int orderId;
 
                 String orderSQL = """
-                INSERT INTO "order"(id, creation_datetime)
+                INSERT INTO "Order" (id, creation_datetime)
                 VALUES (?, ?)
                 ON CONFLICT(id) DO UPDATE
                 SET creation_datetime = EXCLUDED.creation_datetime
@@ -557,9 +528,9 @@ public class DataRetriever {
                 }
 
                 String dishOrderSQL = """
-                INSERT INTO DishOrder(id_order, id_dish, quantity)
-                VALUES (?, ?, ?)
-            """;
+                    INSERT INTO DishOrder(id_order, id_dish, quantity)
+                    VALUES (?, ?, ?)
+                """;
 
                 try (PreparedStatement ps = connection.prepareStatement(dishOrderSQL)) {
                     for (DishOrder dishOrder : toSave.getDishOrders()) {
@@ -567,6 +538,38 @@ public class DataRetriever {
                         ps.setInt(2, dishOrder.getDish().getId());
                         ps.setInt(3, dishOrder.getQuantity());
                         ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
+
+                String stockSQL = """
+                    INSERT INTO StockMovement
+                    (id, id_ingredient, quantity, type, unit, creation_datetime)
+                    VALUES (?, ?, ?, ?::movement_type, ?::unit, ?)
+                """;
+
+                try (PreparedStatement ps = connection.prepareStatement(stockSQL)) {
+
+                    for (DishOrder dishOrder : dishOrderList) {
+                        Dish dish = dishOrder.getDish();
+
+                        for (DishIngredient dishIngredient : dish.getIngredients()) {
+
+                            Ingredient ingredient = dishIngredient.getIngredient();
+
+                            double outQuantity =
+                                    dishIngredient.getQuantity_required()
+                                            * dishOrder.getQuantity();
+
+                            ps.setInt(1, (int) (System.currentTimeMillis() % Integer.MAX_VALUE));
+                            ps.setInt(2, ingredient.getId());
+                            ps.setDouble(3, outQuantity);
+                            ps.setObject(4, StockMovement.MovementType.OUT.name(), Types.OTHER);
+                            ps.setObject(5, dishIngredient.getUnit_type().name(), Types.OTHER);
+                            ps.setTimestamp(6, Timestamp.from(now()));
+
+                            ps.addBatch();
+                        }
                     }
                     ps.executeBatch();
                 }
@@ -585,8 +588,8 @@ public class DataRetriever {
         try (Connection connection = dbconnection.getConnection()) {
 
             PreparedStatement preparedStatement =connection.prepareStatement("""
-                select id, reference
-                from "order"
+                select id, reference, creation_datetime
+                from "Order"
                 where reference like ?
             """);
 
@@ -609,63 +612,6 @@ public class DataRetriever {
         }
     }
 
-    Dish findDishById(Integer id) throws SQLException {
-        DBConnection dbConnection = new DBConnection();
-        Connection connection = dbConnection.getConnection();
-        try {
-            PreparedStatement preparedStatement = connection.prepareStatement(
-                    """
-                            select
-                                dish.id as dish_id,
-                                dish.name as dish_name,
-                                dish_type,
-                                dish.selling_price as dish_price
-                            from dish
-                            where dish.id = ?;
-                            """);
-            preparedStatement.setInt(1, id);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
-                Dish dish = new Dish();
-                dish.setId(resultSet.getInt("dish_id"));
-                dish.setName(resultSet.getString("dish_name"));
-                dish.setDishType(Dish.DishTypeEnum.valueOf(resultSet.getString("dish_type")));
-                dish.setSellingPrice(resultSet.getObject("dish_price") == null
-                        ? null : resultSet.getDouble("dish_price"));
-                dish.setIngredients(findIngredientByDishId(id));
-                return dish;
-            }
-
-            connection.close();
-            throw new RuntimeException("Dish not found " + id);
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-//    Ingredient findIngredientById(Integer id) {
-//
-//        try (Connection connection = dbconnection.getConnection()) {
-//            PreparedStatement preparedStatement = connection.prepareStatement("select id, name, price, category from ingredient where id = ?;");
-//            preparedStatement.setInt(1, id);
-//            ResultSet resultSet = preparedStatement.executeQuery();
-//
-//            if (resultSet.next()) {
-//                int idIngredient = resultSet.getInt("id");
-//                String name = resultSet.getString("name");
-//                Ingredient.CategoryEnum category = Ingredient.CategoryEnum.valueOf(resultSet.getString("category"));
-//                Double price = resultSet.getDouble("price");
-//                return new Ingredient(idIngredient, name, price, category, findStockMovementByIngredientId(idIngredient));
-//            }
-//
-//            throw new RuntimeException("Ingredient not found " + id);
-//
-//        } catch (SQLException e) {
-//            throw new RuntimeException(e);
-//        }
-//    }
-
     public List<DishOrder> findDishOrderByIdOrder(Integer idOrder) throws SQLException {
         Connection connection = dbconnection.getConnection();
         List<DishOrder> dishOrders = new ArrayList<>();
@@ -677,8 +623,8 @@ public class DataRetriever {
                                 id,
                                 id_dish,
                                 quantity
-                            from dish_order
-                            where dish_order.id_order = ?
+                            from dishorder
+                            where dishorder.id_order = ?
                             """);
 
             preparedStatement.setInt(1, idOrder);

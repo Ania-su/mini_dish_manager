@@ -63,4 +63,4 @@ CREATE TABLE DishOrder (
     id_dish int not null,
     FOREIGN KEY (id_dish) REFERENCES Dish(id),
     quantity int not null
-)
+);

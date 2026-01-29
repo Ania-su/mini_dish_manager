@@ -32,7 +32,7 @@ public class Dish {
         for (DishIngredient di : ingredients) {
             Double quantity = di.getQuantity_required();
             if (quantity == null) {
-                throw new IllegalArgumentException("Exeption : unknown value for required quantity");
+                throw new IllegalArgumentException("Exception : unknown value for required quantity");
             }
             else {
                 cost += quantity * di.getIngredient().getPrice();
@@ -43,7 +43,7 @@ public class Dish {
 
     public double getGrossMargin() {
         if (sellingPrice == null) {
-            throw new IllegalArgumentException("Exeption : sellingPrice is null");
+            throw new IllegalArgumentException("Exception : sellingPrice is null");
         }
         return sellingPrice - getDishCost();
     }

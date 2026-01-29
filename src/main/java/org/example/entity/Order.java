@@ -20,10 +20,28 @@ public class Order {
     private List<DishOrder> dishOrders;
 
     public Double getTotalAmountWithoutVAT() {
-        throw new RuntimeException("Not implemented yet.");
+        if (dishOrders == null || dishOrders.isEmpty()) {
+            return 0.0;
+        }
+
+        double total = 0.0;
+        for (DishOrder dishOrder : dishOrders) {
+            Dish dish = dishOrder.getDish();
+            Integer quantity = dishOrder.getQuantity();
+
+            if (dish.getSellingPrice() == null) {
+                throw new IllegalArgumentException(
+                        "Selling price is null for dish : " + dish.getName()
+                );
+            }
+            total += dish.getSellingPrice() * quantity;
+        }
+        return total;
     }
 
     public Double getTotalAmountWithVAT() {
-        throw new RuntimeException("Not implemented yet.");
+        final double VAT_RATE = 0.20;
+        double totalWithoutVAT = getTotalAmountWithoutVAT();
+        return totalWithoutVAT * (1 + VAT_RATE);
     }
 }
