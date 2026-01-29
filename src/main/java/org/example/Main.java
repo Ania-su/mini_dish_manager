@@ -2,9 +2,13 @@ package org.example;
 
 import org.example.entity.Dish;
 import org.example.entity.Ingredient;
+import org.example.entity.StockMovement;
+import org.example.entity.StockValue;
 
 import javax.xml.crypto.Data;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
@@ -37,6 +41,20 @@ public class Main {
             } catch (RuntimeException e) {
                 System.out.println("Error : " + e.getMessage());
             }
+        }
+
+        Instant t = Instant.parse("2024-01-06T12:00:00Z");
+        List <Ingredient> ingredientList = dataRetriever.findIngredients(1, 100);
+        List <StockMovement> stockMovement = new ArrayList<>();
+
+
+        for (Ingredient ingredient : ingredientList) {
+            StockValue stockValue = ingredient.getStockValueAt(t);
+
+            System.out.println(
+                    "Ingredient : " + ingredient.getName() + "\n" +
+                    "Stock : " + stockValue.getQuantity()+ "\n"
+            );
         }
 
 //        try {

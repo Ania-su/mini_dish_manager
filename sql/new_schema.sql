@@ -26,3 +26,41 @@ UPDATE Dish SET selling_price = 3500.00 WHERE id = 1;
 UPDATE Dish SET selling_price = 12000.00 WHERE id = 2;
 UPDATE Dish SET selling_price = 8000.00 WHERE id = 4;
 UPDATE Dish SET selling_price = NULL WHERE id = 3 or id = 5;
+
+CREATE TYPE movement_type AS enum ('IN', 'OUT');
+CREATE TABLE StockMovement (
+    id serial primary key unique not null,
+    id_ingredient int not null,
+    FOREIGN KEY (id_ingredient) REFERENCES Ingredient(id),
+    quantity numeric (10, 2) not null,
+    type movement_type not null,
+    unit unit not null,
+    creation_datetime TIMESTAMP not null
+);
+
+INSERT INTO StockMovement (id, id_ingredient, quantity, type, unit, creation_datetime)
+VALUES (default, 1, 5.0, 'IN', 'KG', '2024-01-05 08:00'),
+       (default, 1, 0.2, 'OUT', 'KG', '2024-01-06 12:00'),
+       (default, 2, 4.0, 'IN', 'KG', '2024-01-05 08:00'),
+       (default, 2, 0.15, 'OUT', 'KG', '2024-01-06 12:00'),
+       (default, 3, 10.0, 'IN', 'KG', '2024-01-04 09:00'),
+       (default, 3, 1.0, 'OUT', 'KG', '2024-01-06 13:00'),
+       (default, 4, 3.0, 'IN', 'KG', '2024-01-05 10:00'),
+       (default, 4, 0.3, 'OUT', 'KG', '2024-01-06 14:00'),
+       (default, 5, 2.5, 'IN', 'KG', '2024-01-05 10:00'),
+       (default, 5, 0.2, 'OUT', 'KG', '2024-01-06 14:00');
+
+CREATE TABLE Order (
+    id serial primary key unique not null,
+    reference varchar (10) generated always as ('ORD' || LPAD(id::text, 5, '0')) STORED,
+    creation_datetime timestamp without time zone
+);
+
+CREATE TABLE DishOrder (
+    id serial primary key unique not null,
+    id_order int not null,
+    FOREIGN KEY (id_order) REFERENCES Order(id),
+    id_dish int not null,
+    FOREIGN KEY (id_dish) REFERENCES Dish(id),
+    quantity int not null
+)

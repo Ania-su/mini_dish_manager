@@ -4,6 +4,11 @@ import lombok.*;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
+
+import static java.util.Arrays.stream;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -25,12 +30,7 @@ public class Ingredient {
     private String name;
     private Double price;
     private CategoryEnum category;
-    private Dish dish;
     private List<StockMovement> stockMovementList;
-
-    public String getDishName() {
-        return dish != null ? dish.getName() : null;
-    }
 
     public Ingredient(int id, String name, Double price, CategoryEnum category) {
         this.id = id;
@@ -40,29 +40,30 @@ public class Ingredient {
     }
 
     public StockValue getStockValueAt(Instant t) {
-        double quantity = 0.0;
-        DishIngredient.Unit unit = DishIngredient.Unit.KG;
-
-        if (stockMovementList == null || stockMovementList.isEmpty()) {
-            return new StockValue(0.0, unit);
+        if (stockMovementList == null) return null;
+        Map<DishIngredient.Unit, List<StockMovement>> unitSet = stockMovementList.stream()
+                .collect(Collectors.groupingBy(stockMovement -> stockMovement.getValue().getUnit()));
+        if (unitSet.keySet().size() > 1) {
+            throw new RuntimeException("Multiple unit found and not handle for conversion");
         }
 
-        for (StockMovement sm : stockMovementList) {
+        List<StockMovement> stockMovements = stockMovementList.stream()
+                .filter(stockMovement -> !stockMovement.getCreationDateTime().isAfter(t))
+                .toList();
+        double movementIn = stockMovements.stream()
+                .filter(stockMovement -> stockMovement.getType().equals(StockMovement.MovementType.IN))
+                .flatMapToDouble(stockMovement -> DoubleStream.of(stockMovement.getValue().getQuantity()))
+                .sum();
+        double movementOut = stockMovements.stream()
+                .filter(stockMovement -> stockMovement.getType().equals(StockMovement.MovementType.OUT))
+                .flatMapToDouble(stockMovement -> DoubleStream.of(stockMovement.getValue().getQuantity()))
+                .sum();
 
-            if (sm.getCreationDateTime().isAfter(t)) {
-                continue;
-            }
+        StockValue stockValue = new StockValue();
+        stockValue.setQuantity(movementIn - movementOut);
+        stockValue.setUnit(unitSet.keySet().stream().findFirst().get());
 
-            double q = sm.getValue().getQuantity();
-
-            if (sm.getType() == StockMovement.MovementType.IN) {
-                quantity += q;
-            } else if (sm.getType() == StockMovement.MovementType.OUT) {
-                quantity -= q;
-            }
-        }
-
-        return new StockValue(quantity, unit);
-
+        return stockValue;
     }
+
 }
